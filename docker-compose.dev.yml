@@ -1,0 +1,228 @@
+services:
+  client-gateway-epaa-dev:
+    image: client-gateway-epaa-dev:development
+    build:
+      context: ./client-gateway
+      dockerfile: dockerfile.dev
+    restart: unless-stopped
+    container_name: client-gateway-epaa-dev
+    ports:
+      - '${GATEWAY_SERVER_PORT_DEVELOPMENT:-4005}:${GATEWAY_SERVER_PORT_DEVELOPMENT:-4005}'
+    volumes:
+      - ./client-gateway:/usr/src/app
+      - client-gateway-node-modules:/usr/src/app/node_modules
+      - /home/sigepaa/sigepaa/images/connections:/home/sigepaa/sigepaa/images/connections
+      - /home/sigepaa/sigepaa/images/qrcodes:/home/sigepaa/sigepaa/images/qrcodes
+      - /home/sigepaa/sigepaa/images/readings:/home/sigepaa/sigepaa/images/readings
+      - //home/sigepaa/sigepaa/images/work_orders:/home/sigepaa/sigepaa/images/work_orders
+    command: ['npm', 'run', 'start:dev']
+    env_file:
+      - ./client-gateway/.env.dev
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_OPTIONS=--max-old-space-size=1024
+    networks:
+      - epaa-network-dev
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'curl',
+          '-f',
+          'http://localhost:${GATEWAY_SERVER_PORT_DEVELOPMENT:-4005}/health'
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  readings-service-dev:
+    image: readings-service-dev:development
+    build:
+      context: ./readings
+      dockerfile: dockerfile.dev
+    restart: unless-stopped
+    container_name: readings-service-dev
+    ports:
+      - '${READINGS_SERVER_PORT_DEVELOPMENT:-4007}:${READINGS_SERVER_PORT_DEVELOPMENT:-4007}'
+    volumes:
+      - ./readings:/usr/src/app
+      - readings-service-node-modules:/usr/src/app/node_modules
+    command: ['npm', 'run', 'start:dev']
+    env_file:
+      - ./readings/.env.dev
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_OPTIONS=--max-old-space-size=1024
+    networks:
+      - epaa-network-dev
+    healthcheck:
+      test: ['CMD', 'true']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  epaa-database-legacy-service-dev:
+    image: epaa-database-legacy-service-dev:development
+    build:
+      context: ./epaa-database-legacy
+      dockerfile: dockerfile.dev
+    restart: unless-stopped
+    container_name: epaa-database-legacy-service-dev
+    ports:
+      - '${EPAA_DATABASE_LEGACY_SERVER_PORT_DEVELOPMENT:-4009}:${EPAA_DATABASE_LEGACY_SERVER_PORT_DEVELOPMENT:-4009}'
+    volumes:
+      - ./epaa-database-legacy:/usr/src/app
+      - epaa-database-legacy-node-modules:/usr/src/app/node_modules
+    command: ['npm', 'run', 'start:dev']
+    env_file:
+      - ./epaa-database-legacy/.env.dev
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_OPTIONS=--max-old-space-size=1024
+    networks:
+      - epaa-network-dev
+    healthcheck:
+      test: ['CMD', 'true']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  connection-service-dev:
+    image: connection-service-dev:development
+    build:
+      context: ./connection
+      dockerfile: dockerfile.dev
+    restart: unless-stopped
+    container_name: connection-service-dev
+    ports:
+      - '${CONNECTION_SERVER_PORT_DEVELOPMENT:-4013}:${CONNECTION_SERVER_PORT_DEVELOPMENT:-4013}'
+    volumes:
+      - ./connection:/usr/src/app
+      - connection-service-node-modules:/usr/src/app/node_modules
+    command: ['npm', 'run', 'start:dev']
+    env_file:
+      - ./connection/.env.dev
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_OPTIONS=--max-old-space-size=1024
+    networks:
+      - epaa-network-dev
+    healthcheck:
+      test: ['CMD', 'true']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  security-service-dev:
+    image: security-service-dev:development
+    build:
+      context: ./security
+      dockerfile: dockerfile.dev
+    restart: unless-stopped
+    container_name: security-service-dev
+    ports:
+      - '${SECURITY_SERVER_PORT_DEVELOPMENT:-4004}:${SECURITY_SERVER_PORT_DEVELOPMENT:-4004}'
+    volumes:
+      - ./security:/usr/src/app
+      - security-service-node-modules:/usr/src/app/node_modules
+    command: ['npm', 'run', 'start:dev']
+    env_file:
+      - ./security/.env.dev
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_OPTIONS=--max-old-space-size=1024
+    networks:
+      - epaa-network-dev
+    healthcheck:
+      test: ['CMD', 'true']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+volumes:
+  client-gateway-node-modules:
+  #qrcode-service-node-modules:
+  readings-service-node-modules:
+  epaa-database-legacy-node-modules:
+  #property-service-node-modules:
+  #clients-service-node-modules:
+  #companies-service-node-modules:
+  connection-service-node-modules:
+  #work-orders-service-node-modules:
+  #sigame-legacy-node-modules:
+  workers-service-node-modules:
+  security-service-node-modules:
+
+networks:
+  epaa-network-dev:
+    external: true
