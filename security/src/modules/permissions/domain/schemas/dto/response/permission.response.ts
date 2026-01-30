@@ -6,3 +6,12 @@ export interface PermissionResponse {
   categoryId: number;
   scoppes?: string;
 }
+
+export interface CategoryResponseWithPermissions {
+  categoryId: number;
+  categoryName: string;
+  categoryDescription: string;
+  categoryIsActive: boolean;
+  scopes?: string;
+  permissions: PermissionResponse[];
+}

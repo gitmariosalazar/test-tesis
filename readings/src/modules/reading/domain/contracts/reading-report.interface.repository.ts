@@ -99,6 +99,14 @@ export interface NoveltyStatsReport {
   totalReadingValue: number;
 }
 
+export interface AdvancedReportReadingsResponse {
+  sector: number;
+  totalConnections: number;
+  readingsCompleted: number;
+  missingReadings: number;
+  progressPercentage: number;
+}
+
 export interface InterfaceReadingReportRepository {
   findLastReadingsByConnection(
     cadastralKey: string,
@@ -111,4 +119,7 @@ export interface InterfaceReadingReportRepository {
   findDailyStats(month: string): Promise<DailyStatsReport[]>;
   findSectorStats(month: string): Promise<SectorStatsReport[]>;
   findNoveltyStats(month: string): Promise<NoveltyStatsReport[]>;
+  findAdvancedReportReadings(
+    month: string,
+  ): Promise<AdvancedReportReadingsResponse[]>;
 }

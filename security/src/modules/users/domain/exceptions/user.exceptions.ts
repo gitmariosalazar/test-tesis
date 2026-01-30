@@ -32,3 +32,10 @@ export class InvalidPasswordException extends UserDomainException {
     this.name = 'InvalidPasswordException';
   }
 }
+
+export class RoleNotFoundException extends UserDomainException {
+  constructor(identifier: string) {
+    super(`Role with identifier ${identifier} not found`);
+    this.name = 'RoleNotFoundException';
+  }
+}

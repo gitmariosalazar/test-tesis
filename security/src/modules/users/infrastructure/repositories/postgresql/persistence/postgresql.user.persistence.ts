@@ -3,21 +3,73 @@ import { DatabaseServicePostgreSQL } from '../../../../../../shared/connections/
 import { InterfaceUserRepository } from '../../../../domain/contracts/user.interface.repository';
 import {
   UserResponse,
+  UserResponseWithPermissionsResponse,
   UserResponseWithRolesAndPermissionsResponse,
+  UserResponseWithRolesResponse,
 } from '../../../../domain/schemas/dto/response/user.response';
 import {
   UserSQLResult,
+  UserWithPermissionsSQLResult,
   UserWithRolesAndPermissionsSQLResult,
+  UserWithRolesSQLResult,
 } from '../../../interfaces/sql/user.sql.result';
 import { RpcException } from '@nestjs/microservices';
 import { statusCode } from '../../../../../../settings/environments/status-code';
 import { UserAdapter } from '../adapters/user.adapter';
 import { UserModel } from '../../../../domain/schemas/models/user.model';
 import { Exists } from '../../../../../../shared/interfaces/verify-exists';
+import {
+  AssignPermissionToUserRequest,
+  RemovePermissionFromUserRequest,
+} from '../../../../domain/schemas/dto/request/assign-permission-to-user.request';
+import {
+  AssignRoleToUserRequest,
+  RemoveRoleFromUserRequest,
+} from '../../../../domain/schemas/dto/request/assign-role-to-user.request';
 
 @Injectable()
 export class PostgreSQLUserPersistence implements InterfaceUserRepository {
   constructor(private readonly postgreSQLService: DatabaseServicePostgreSQL) {}
+  async getUsersByRoleId(roleId: number): Promise<UserResponse[]> {
+    try {
+      const query: string = `
+        SELECT 
+          u.usuario_id AS "user_id",
+          u.username,
+          u.email,
+          u.fecha_registro AS "registered_at",
+          u.last_login,
+          u.failed_attempts,
+          u.two_factor_enabled,
+          u.activo AS "is_active",
+          u.observaciones AS "observations"
+        FROM usuarios u
+        JOIN usuario_roles ur ON u.usuario_id = ur.usuario_id
+        WHERE ur.rol_id = $1;
+      `;
+      const params = [roleId];
+
+      const result = await this.postgreSQLService.query<UserSQLResult>(
+        query,
+        params,
+      );
+
+      if (result.length === 0) {
+        throw new RpcException({
+          statusCode: statusCode.NOT_FOUND,
+          message: 'Users not found',
+        });
+      }
+
+      const userResponses: UserResponse[] = result.map((user) =>
+        UserAdapter.fromUserSQLResultToUserResponse(user),
+      );
+
+      return userResponses;
+    } catch (error) {
+      throw error;
+    }
+  }
 
   /*
   User Table
@@ -714,6 +766,397 @@ export class PostgreSQLUserPersistence implements InterfaceUserRepository {
         throw new RpcException({
           statusCode: statusCode.NOT_FOUND,
           message: 'Users not found',
+        });
+      }
+
+      const userResponses: UserResponseWithRolesAndPermissionsResponse[] =
+        result.map((user) =>
+          UserAdapter.fromUserWithRolesAndPermissionsSQLResultToUserWithRolesAndPermissionsResponse(
+            user,
+          ),
+        );
+
+      return userResponses;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async assignPermissionToUser(
+    assignPermissionToUserRequest: AssignPermissionToUserRequest,
+  ): Promise<boolean> {
+    try {
+      const query: string = `
+        INSERT INTO usuario_permisos (usuario_id, permiso_id)
+        VALUES ($1, $2)
+        RETURNING usuario_id, permiso_id;
+      `;
+      const params = [
+        assignPermissionToUserRequest.userId,
+        assignPermissionToUserRequest.permissionId,
+      ];
+
+      const result = await this.postgreSQLService.query<{
+        usuario_id: string;
+        permiso_id: number;
+      }>(query, params);
+
+      if (result.length === 0) {
+        throw new RpcException({
+          statusCode: statusCode.NOT_FOUND,
+          message: 'User not found',
+        });
+      }
+
+      return true;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async removePermissionFromUser(
+    removePermissionFromUserRequest: RemovePermissionFromUserRequest,
+  ): Promise<boolean> {
+    try {
+      const query: string = `
+        DELETE FROM usuario_permisos
+        WHERE usuario_id = $1 AND permiso_id = $2
+        RETURNING usuario_id, permiso_id;
+      `;
+      const params = [
+        removePermissionFromUserRequest.userId,
+        removePermissionFromUserRequest.permissionId,
+      ];
+
+      const result = await this.postgreSQLService.query<{
+        usuario_id: string;
+        permiso_id: number;
+      }>(query, params);
+
+      if (result.length === 0) {
+        throw new RpcException({
+          statusCode: statusCode.NOT_FOUND,
+          message: 'User not found',
+        });
+      }
+
+      return true;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async existsPermissionInUser(
+    userId: string,
+    permissionId: number,
+  ): Promise<boolean> {
+    try {
+      const query: string = `
+        SELECT EXISTS (
+          SELECT 1
+          FROM usuario_permisos
+          WHERE usuario_id = $1 AND permiso_id = $2
+        );
+      `;
+      const params = [userId, permissionId];
+
+      const result = await this.postgreSQLService.query<{
+        exists: boolean;
+      }>(query, params);
+
+      if (result.length === 0) {
+        throw new RpcException({
+          statusCode: statusCode.NOT_FOUND,
+          message: 'User not found',
+        });
+      }
+
+      return result[0].exists;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getUsersByPermissionId(permissionId: number): Promise<UserResponse[]> {
+    try {
+      const query: string = `
+        SELECT 
+          u.usuario_id AS "user_id",
+          u.username,
+          u.email,
+          u.fecha_registro AS "registered_at",
+          u.last_login,
+          u.failed_attempts,
+          u.two_factor_enabled,
+          u.activo AS "is_active",
+          u.observaciones AS "observations"
+        FROM usuarios u
+        JOIN usuario_permisos up ON u.usuario_id = up.usuario_id
+        WHERE up.permiso_id = $1;
+      `;
+      const params = [permissionId];
+
+      const result = await this.postgreSQLService.query<UserSQLResult>(
+        query,
+        params,
+      );
+
+      if (result.length === 0) {
+        throw new RpcException({
+          statusCode: statusCode.NOT_FOUND,
+          message: 'Users not found',
+        });
+      }
+
+      const userResponses: UserResponse[] = result.map((user) =>
+        UserAdapter.fromUserSQLResultToUserResponse(user),
+      );
+
+      return userResponses;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getPermissionsByUserId(
+    userId: string,
+  ): Promise<UserResponseWithPermissionsResponse[]> {
+    try {
+      const query: string = `
+        SELECT 
+          u.usuario_id AS "user_id",
+          u.username,
+          u.email,
+          u.fecha_registro AS "registered_at",
+          u.last_login,
+          u.failed_attempts,
+          u.two_factor_enabled,
+          u.activo AS "is_active",
+          u.observaciones AS "observations",
+          COALESCE(
+            (SELECT jsonb_agg(jsonb_build_object('id', p.permiso_id, 'name', p.nombre))
+             FROM usuario_permisos up
+             JOIN permisos p ON up.permiso_id = p.permiso_id
+             WHERE up.usuario_id = u.usuario_id
+            ), '[]'::jsonb
+          )::json AS permissions
+        FROM usuarios u
+        WHERE u.usuario_id = $1;
+      `;
+      const params = [userId];
+
+      const result =
+        await this.postgreSQLService.query<UserWithPermissionsSQLResult>(
+          query,
+          params,
+        );
+
+      if (result.length === 0) {
+        throw new RpcException({
+          statusCode: statusCode.NOT_FOUND,
+          message: 'User not found',
+        });
+      }
+
+      const userResponses: UserResponseWithPermissionsResponse[] = result.map(
+        (user) =>
+          UserAdapter.fromUserWithPermissionsSQLResultToUserWithPermissionsResponse(
+            user,
+          ),
+      );
+
+      return userResponses;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async assignRoleToUser(
+    assignRoleToUserRequest: AssignRoleToUserRequest,
+  ): Promise<boolean> {
+    try {
+      const query: string = `
+        INSERT INTO usuario_roles (usuario_id, rol_id)
+        VALUES ($1, $2)
+        RETURNING usuario_id, rol_id;
+      `;
+      const params = [
+        assignRoleToUserRequest.userId,
+        assignRoleToUserRequest.roleId,
+      ];
+
+      const result = await this.postgreSQLService.query<{
+        usuario_id: string;
+        rol_id: number;
+      }>(query, params);
+
+      if (result.length === 0) {
+        throw new RpcException({
+          statusCode: statusCode.NOT_FOUND,
+          message: 'User not found',
+        });
+      }
+
+      return true;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async removeRoleFromUser(
+    removeRoleFromUserRequest: RemoveRoleFromUserRequest,
+  ): Promise<boolean> {
+    try {
+      const query: string = `
+        DELETE FROM usuario_roles
+        WHERE usuario_id = $1 AND rol_id = $2
+        RETURNING usuario_id, rol_id;
+      `;
+      const params = [
+        removeRoleFromUserRequest.userId,
+        removeRoleFromUserRequest.roleId,
+      ];
+
+      const result = await this.postgreSQLService.query<{
+        usuario_id: string;
+        rol_id: number;
+      }>(query, params);
+
+      if (result.length === 0) {
+        throw new RpcException({
+          statusCode: statusCode.NOT_FOUND,
+          message: 'User not found',
+        });
+      }
+
+      return true;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async existsRoleInUser(userId: string, roleId: number): Promise<boolean> {
+    try {
+      const query: string = `
+        SELECT EXISTS (
+          SELECT 1
+          FROM usuario_roles
+          WHERE usuario_id = $1 AND rol_id = $2
+        );
+      `;
+      const params = [userId, roleId];
+
+      const result = await this.postgreSQLService.query<{
+        exists: boolean;
+      }>(query, params);
+
+      if (result.length === 0) {
+        throw new RpcException({
+          statusCode: statusCode.NOT_FOUND,
+          message: 'User not found',
+        });
+      }
+
+      return result[0].exists;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getRolesByUserId(
+    userId: string,
+  ): Promise<UserResponseWithRolesResponse[]> {
+    try {
+      const query: string = `
+        SELECT 
+          u.usuario_id AS "user_id",
+          u.username,
+          u.email,
+          u.fecha_registro AS "registered_at",
+          u.last_login,
+          u.failed_attempts,
+          u.two_factor_enabled,
+          u.activo AS "is_active",
+          u.observaciones AS "observations",
+          COALESCE(
+            (SELECT jsonb_agg(jsonb_build_object('id', r.rol_id, 'name', r.nombre))
+             FROM usuario_roles ur
+             JOIN roles r ON ur.rol_id = r.rol_id
+             WHERE ur.usuario_id = u.usuario_id
+            ), '[]'::jsonb
+          )::json AS roles
+        FROM usuarios u
+        WHERE u.usuario_id = $1;
+      `;
+      const params = [userId];
+
+      const result = await this.postgreSQLService.query<UserWithRolesSQLResult>(
+        query,
+        params,
+      );
+
+      if (result.length === 0) {
+        throw new RpcException({
+          statusCode: statusCode.NOT_FOUND,
+          message: 'User not found',
+        });
+      }
+
+      const userResponses: UserResponseWithRolesResponse[] = result.map(
+        (user) =>
+          UserAdapter.fromUserWithRolesSQLResultToUserWithRolesResponse(user),
+      );
+
+      return userResponses;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getRolesAndPermissionsByUserId(
+    userId: string,
+  ): Promise<UserResponseWithRolesAndPermissionsResponse[]> {
+    try {
+      const query: string = `
+        SELECT 
+          u.usuario_id AS "user_id",
+          u.username,
+          u.email,
+          u.fecha_registro AS "registered_at",
+          u.last_login,
+          u.failed_attempts,
+          u.two_factor_enabled,
+          u.activo AS "is_active",
+          u.observaciones AS "observations",
+          COALESCE(
+            (SELECT jsonb_agg(jsonb_build_object('id', r.rol_id, 'name', r.nombre))
+             FROM usuario_roles ur
+             JOIN roles r ON ur.rol_id = r.rol_id
+             WHERE ur.usuario_id = u.usuario_id
+            ), '[]'::jsonb
+          )::json AS roles,
+          COALESCE(
+            (SELECT jsonb_agg(jsonb_build_object('id', p.permiso_id, 'name', p.nombre))
+             FROM usuario_permisos up
+             JOIN permisos p ON up.permiso_id = p.permiso_id
+             WHERE up.usuario_id = u.usuario_id
+            ), '[]'::jsonb
+          )::json AS permissions
+        FROM usuarios u
+        WHERE u.usuario_id = $1;
+      `;
+      const params = [userId];
+
+      const result =
+        await this.postgreSQLService.query<UserWithRolesAndPermissionsSQLResult>(
+          query,
+          params,
+        );
+
+      if (result.length === 0) {
+        throw new RpcException({
+          statusCode: statusCode.NOT_FOUND,
+          message: 'User not found',
         });
       }
 

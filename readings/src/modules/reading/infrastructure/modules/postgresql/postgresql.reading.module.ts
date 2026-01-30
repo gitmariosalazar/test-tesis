@@ -22,6 +22,7 @@ import { GetGlobalStatsReportUseCase } from '../../../application/usecases/repor
 import { GetDailyStatsReportUseCase } from '../../../application/usecases/reports/GetDailyStatsReportUseCase';
 import { GetSectorStatsReportUseCase } from '../../../application/usecases/reports/GetSectorStatsReportUseCase';
 import { GetNoveltyStatsReportUseCase } from '../../../application/usecases/reports/GetNoveltyStatsReportUseCase';
+import { GetAdvancedReportReadingsUseCase } from '../../../application/usecases/reports/GetAdvancedReportReadingsUseCase';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { GetNoveltyStatsReportUseCase } from '../../../application/usecases/repo
     GetDailyStatsReportUseCase,
     GetSectorStatsReportUseCase,
     GetNoveltyStatsReportUseCase,
+    GetAdvancedReportReadingsUseCase,
     {
       provide: 'ReadingRepository',
       useClass: ReadingPersistencePostgreSQL,

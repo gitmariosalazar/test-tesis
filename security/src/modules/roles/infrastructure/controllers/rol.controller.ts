@@ -1,35 +1,73 @@
 import { Controller } from '@nestjs/common';
-import { RolService } from '../../application/services/rol.service';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { CreateRolRequest } from '../../domain/schemas/dto/request/create.rol.request';
 import { UpdateRolRequest } from '../../domain/schemas/dto/request/update.rol.request';
+import { CreateRolUseCase } from '../../application/usecases/create-rol.usecase';
+import { FindRolUseCase } from '../../application/usecases/find-rol.usecase';
+import { UpdateRolUseCase } from '../../application/usecases/update-rol.usecase';
+import { RolDomainException } from '../../domain/exceptions/rol.exceptions';
+import { statusCode } from '../../../../settings/environments/status-code';
 
 @Controller('rol')
 export class RolController {
-  // Implement controller methods here
-  constructor(private readonly rolService: RolService) {}
+  constructor(
+    private readonly createRolUseCase: CreateRolUseCase,
+    private readonly findRolUseCase: FindRolUseCase,
+    private readonly updateRolUseCase: UpdateRolUseCase,
+  ) {}
+
+  private handleException(error: any): never {
+    if (error instanceof RolDomainException) {
+      throw new RpcException({
+        statusCode: statusCode.BAD_REQUEST,
+        message: error.message,
+      });
+    }
+    if (error instanceof RpcException) throw error;
+
+    throw new RpcException({
+      statusCode: statusCode.INTERNAL_SERVER_ERROR,
+      message: error.message || 'Internal server error',
+    });
+  }
 
   @MessagePattern('authentication.roles.get_rol_by_id')
   async getRolById(@Payload() rolId: number) {
-    return this.rolService.getRolById(rolId);
+    try {
+      return await this.findRolUseCase.findById(rolId);
+    } catch (error) {
+      this.handleException(error);
+    }
   }
 
   @MessagePattern('authentication.roles.get_all_rols')
   async getAllRols(@Payload() payload: { limit: number; offset: number }) {
-    const { limit, offset } = payload;
-    return this.rolService.getAllRols(limit, offset);
+    try {
+      const { limit, offset } = payload;
+      return await this.findRolUseCase.findAll(limit, offset);
+    } catch (error) {
+      this.handleException(error);
+    }
   }
 
   @MessagePattern('authentication.roles.create_rol')
   async createRol(@Payload() rolData: CreateRolRequest) {
-    return this.rolService.createRol(rolData);
+    try {
+      return await this.createRolUseCase.execute(rolData);
+    } catch (error) {
+      this.handleException(error);
+    }
   }
 
   @MessagePattern('authentication.roles.update_rol')
   async updateRol(
     @Payload() payload: { rolId: number; rolData: UpdateRolRequest },
   ) {
-    const { rolId, rolData } = payload;
-    return this.rolService.updateRol(rolId, rolData);
+    try {
+      const { rolId, rolData } = payload;
+      return await this.updateRolUseCase.updateRol(rolId, rolData);
+    } catch (error) {
+      this.handleException(error);
+    }
   }
 }

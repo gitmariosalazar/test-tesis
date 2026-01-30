@@ -8,6 +8,16 @@ import { AuthUserUseCase } from '../../application/usecases/auth.usecase';
 import { UpdateUserUseCase } from '../../application/usecases/update-user.usecase';
 import { UserDomainException } from '../../domain/exceptions/user.exceptions';
 import { statusCode } from '../../../../settings/environments/status-code';
+import { AssignRoleToUserUseCase } from '../../application/usecases/asign-role-to-user.usecase';
+import {
+  AssignRoleToUserRequest,
+  RemoveRoleFromUserRequest,
+} from '../../domain/schemas/dto/request/assign-role-to-user.request';
+import { AssignPermissionToUserUseCase } from '../../application/usecases/asign-permission-to-user.usecase';
+import {
+  AssignPermissionToUserRequest,
+  RemovePermissionFromUserRequest,
+} from '../../domain/schemas/dto/request/assign-permission-to-user.request';
 
 @Controller('users')
 export class UserController {
@@ -16,6 +26,8 @@ export class UserController {
     private readonly findUserUseCase: FindUserUseCase,
     private readonly authUserUseCase: AuthUserUseCase,
     private readonly updateUserUseCase: UpdateUserUseCase,
+    private readonly assignRoleToUserUseCase: AssignRoleToUserUseCase,
+    private readonly assignPermissionToUserUseCase: AssignPermissionToUserUseCase,
   ) {}
 
   private handleException(error: any): never {
@@ -228,6 +240,114 @@ export class UserController {
   async getProfile(@Payload() usernameOrEmail: string) {
     try {
       return await this.findUserUseCase.getProfile(usernameOrEmail);
+    } catch (error) {
+      this.handleException(error);
+    }
+  }
+
+  @MessagePattern('authentication.user.assign_role_to_user')
+  async assignRoleToUser(@Payload() data: AssignRoleToUserRequest) {
+    try {
+      return await this.assignRoleToUserUseCase.assignRoleToUser(data);
+    } catch (error) {
+      this.handleException(error);
+    }
+  }
+
+  @MessagePattern('authentication.user.remove_role_from_user')
+  async removeRoleFromUser(@Payload() data: RemoveRoleFromUserRequest) {
+    try {
+      return await this.assignRoleToUserUseCase.removeRoleFromUser(data);
+    } catch (error) {
+      this.handleException(error);
+    }
+  }
+
+  @MessagePattern('authentication.user.exists_role_in_user')
+  async existsRoleInUser(@Payload() data: { userId: string; roleId: number }) {
+    try {
+      return await this.assignRoleToUserUseCase.existsRoleInUser(
+        data.userId,
+        data.roleId,
+      );
+    } catch (error) {
+      this.handleException(error);
+    }
+  }
+
+  @MessagePattern('authentication.user.get_users_by_role_id')
+  async getUsersByRoleId(@Payload() roleId: number) {
+    try {
+      return await this.assignRoleToUserUseCase.getUsersByRoleId(roleId);
+    } catch (error) {
+      this.handleException(error);
+    }
+  }
+
+  @MessagePattern('authentication.user.get_roles_by_user_id')
+  async getRolesByUserId(@Payload() userId: string) {
+    try {
+      return await this.assignRoleToUserUseCase.getRolesByUserId(userId);
+    } catch (error) {
+      this.handleException(error);
+    }
+  }
+
+  @MessagePattern('authentication.user.assign_permission_to_user')
+  async assignPermissionToUser(@Payload() data: AssignPermissionToUserRequest) {
+    try {
+      return await this.assignPermissionToUserUseCase.assignPermissionToUser(
+        data,
+      );
+    } catch (error) {
+      this.handleException(error);
+    }
+  }
+
+  @MessagePattern('authentication.user.remove_permission_from_user')
+  async removePermissionFromUser(
+    @Payload() data: RemovePermissionFromUserRequest,
+  ) {
+    try {
+      return await this.assignPermissionToUserUseCase.removePermissionFromUser(
+        data,
+      );
+    } catch (error) {
+      this.handleException(error);
+    }
+  }
+
+  @MessagePattern('authentication.user.exists_permission_in_user')
+  async existsPermissionInUser(
+    @Payload() data: { userId: string; permissionId: number },
+  ) {
+    try {
+      return await this.assignPermissionToUserUseCase.existsPermissionInUser(
+        data.userId,
+        data.permissionId,
+      );
+    } catch (error) {
+      this.handleException(error);
+    }
+  }
+
+  @MessagePattern('authentication.user.get_permissions_by_user_id')
+  async getPermissionsByUserId(@Payload() userId: string) {
+    try {
+      return await this.assignPermissionToUserUseCase.getPermissionsByUserId(
+        userId,
+      );
+    } catch (error) {
+      this.handleException(error);
+    }
+  }
+
+  @MessagePattern('authentication.user.get_users_by_permission_id')
+  async getUsersByPermissionId(@Payload() permissionId: number) {
+    try {
+      return await this.assignPermissionToUserUseCase.getUsersByPermissionId(
+        permissionId,
+      );
     } catch (error) {
       this.handleException(error);
     }

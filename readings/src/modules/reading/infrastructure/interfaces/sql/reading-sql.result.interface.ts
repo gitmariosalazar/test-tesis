@@ -68,3 +68,11 @@ export interface ReadingInfoSQLResult {
   start_date_period: Date;
   end_date_period: Date;
 }
+
+export interface AdvancedReportReadingsSQLResult {
+  sector: number;
+  total_connections: number;
+  readings_completed: number;
+  missing_readings: number;
+  progress_percentage: number;
+}

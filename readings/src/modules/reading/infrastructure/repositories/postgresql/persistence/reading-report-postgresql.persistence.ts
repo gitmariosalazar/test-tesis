@@ -9,12 +9,66 @@ import {
   DailyStatsReport,
   SectorStatsReport,
   NoveltyStatsReport,
+  AdvancedReportReadingsResponse,
 } from '../../../../domain/contracts/reading-report.interface.repository';
 import { DatabaseServicePostgreSQL } from '../../../../../../shared/connections/database/postgresql/postgresql.service';
+import { AdvancedReportReadingsSQLResult } from '../../../interfaces/sql/reading-sql.result.interface';
+import { ReadingPostgreSQLAdapter } from '../adapters/reading-postgresql.adapter';
 
 @Injectable()
 export class ReadingReportPostgreSQLPersistence implements InterfaceReadingReportRepository {
   constructor(private readonly postgresqlService: DatabaseServicePostgreSQL) {}
+
+  async findAdvancedReportReadings(
+    month: string,
+  ): Promise<AdvancedReportReadingsResponse[]> {
+    const query = `
+      SELECT
+          s.sector,
+          COALESCE(a.total_connections, 0) AS total_connections,
+          COALESCE(l.readings_completed, 0) AS readings_completed,
+          COALESCE(a.total_connections, 0) - COALESCE(l.readings_completed, 0) AS missing_readings,
+          CASE
+              WHEN COALESCE(a.total_connections, 0) = 0 THEN 0
+              ELSE ROUND(COALESCE(l.readings_completed, 0) * 100.0 / a.total_connections, 1)
+          END AS progress_percentage
+      FROM
+          (SELECT DISTINCT sector FROM acometida) s
+      LEFT JOIN
+          (SELECT
+              sector,
+              COUNT(*) AS total_connections
+          FROM acometida
+          GROUP BY sector
+          ) a ON a.sector = s.sector
+      LEFT JOIN
+          (SELECT
+              sector,
+              COUNT(*) AS readings_completed
+          FROM lectura
+          WHERE mes_lectura = $1
+          GROUP BY sector
+          ) l ON l.sector = s.sector
+      ORDER BY
+          s.sector;
+    `;
+    const result =
+      await this.postgresqlService.query<AdvancedReportReadingsSQLResult>(
+        query,
+        [month],
+      );
+    if (result.length === 0) {
+      throw new Error('No se encontraron lecturas');
+    }
+
+    const response: AdvancedReportReadingsResponse[] = result.map((row) =>
+      ReadingPostgreSQLAdapter.fromReadingPostgreSQLResultToAdvancedReportReadingsResponse(
+        row,
+      ),
+    );
+
+    return response;
+  }
 
   async findLastReadingsByConnection(
     cadastralKey: string,

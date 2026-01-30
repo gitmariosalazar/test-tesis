@@ -8,6 +8,10 @@ import { FindUserUseCase } from '../../../application/usecases/find-user.usecase
 import { AuthUserUseCase } from '../../../application/usecases/auth.usecase';
 import { UpdateUserUseCase } from '../../../application/usecases/update-user.usecase';
 import { BcryptEncryptionService } from '../../adapters/bcrypt.encryption.service';
+import { AssignRoleToUserUseCase } from '../../../application/usecases/asign-role-to-user.usecase';
+import { AssignPermissionToUserUseCase } from '../../../application/usecases/asign-permission-to-user.usecase';
+import { PermissionPostgreSQLPersistence } from '../../../../permissions/infrastructure/repositories/persistence/postgresql.permission.persistence';
+import { RolPostgreSQLPersistence } from '../../../../roles/infrastructure/repositories/postgresql/persistence/postgresql.rol.persistence';
 
 @Module({
   imports: [KafkaServiceModule],
@@ -19,6 +23,8 @@ import { BcryptEncryptionService } from '../../adapters/bcrypt.encryption.servic
     AuthUserUseCase,
     UpdateUserUseCase,
     BcryptEncryptionService,
+    AssignRoleToUserUseCase,
+    AssignPermissionToUserUseCase,
     {
       provide: 'EncryptionService',
       useClass: BcryptEncryptionService,
@@ -26,6 +32,14 @@ import { BcryptEncryptionService } from '../../adapters/bcrypt.encryption.servic
     {
       provide: 'UserRepository',
       useClass: PostgreSQLUserPersistence,
+    },
+    {
+      provide: 'PermissionRepository',
+      useClass: PermissionPostgreSQLPersistence,
+    },
+    {
+      provide: 'RolRepository',
+      useClass: RolPostgreSQLPersistence,
     },
   ],
   exports: [],

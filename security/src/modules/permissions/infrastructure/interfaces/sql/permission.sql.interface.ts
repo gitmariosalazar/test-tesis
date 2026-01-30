@@ -6,3 +6,12 @@ export interface PermissionSQLResponse {
   is_active: boolean;
   category_id: number;
 }
+
+export interface CategorySqlResponseWithPermissions {
+  category_id: number;
+  category_name: string;
+  category_description: string;
+  category_is_active: boolean;
+  scopes: string;
+  permissions: PermissionSQLResponse[];
+}

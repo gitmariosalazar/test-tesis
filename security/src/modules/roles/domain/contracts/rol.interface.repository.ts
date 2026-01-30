@@ -6,4 +6,6 @@ export interface InterfaceRolRepository {
   updateRol(rolId: number, rolModel: RolModel): Promise<RolResponse | null>;
   getRolById(rolId: number): Promise<RolResponse | null>;
   getAllRols(limit: number, offset: number): Promise<RolResponse[]>;
+  findByName(name: string): Promise<RolResponse | null>;
+  existsByName(name: string): Promise<boolean>;
 }

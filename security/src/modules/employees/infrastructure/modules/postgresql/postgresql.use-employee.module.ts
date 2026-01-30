@@ -6,7 +6,11 @@ import { PostgreSQLUserEmployeePersistence } from '../../repositories/postgresql
 import { CreateEmployeeUseCase } from '../../../application/usecases/create-employee.usecase';
 import { FindEmployeeUseCase } from '../../../application/usecases/find-employee.usecase';
 import { UpdateEmployeeUseCase } from '../../../application/usecases/update-employee.usecase';
-import { ManageEmployeeUseCase } from '../../../application/usecases/manage-employee.usecase';
+import { AssignEmployeeZonesUseCase } from '../../../application/usecases/assign-employee-zones.usecase';
+import { ChangeEmployeeStatusUseCase } from '../../../application/usecases/change-employee-status.usecase';
+import { ChangeEmployeeSupervisorUseCase } from '../../../application/usecases/change-employee-supervisor.usecase';
+import { DeleteEmployeeUseCase } from '../../../application/usecases/delete-employee.usecase';
+import { RestoreEmployeeUseCase } from '../../../application/usecases/restore-employee.usecase';
 
 @Module({
   imports: [KafkaServiceModule],
@@ -16,7 +20,11 @@ import { ManageEmployeeUseCase } from '../../../application/usecases/manage-empl
     CreateEmployeeUseCase,
     FindEmployeeUseCase,
     UpdateEmployeeUseCase,
-    ManageEmployeeUseCase,
+    AssignEmployeeZonesUseCase,
+    ChangeEmployeeStatusUseCase,
+    ChangeEmployeeSupervisorUseCase,
+    DeleteEmployeeUseCase,
+    RestoreEmployeeUseCase,
     {
       provide: 'UserEmployeeRepository',
       useClass: PostgreSQLUserEmployeePersistence,

@@ -98,3 +98,11 @@ export interface NoveltyStatsReport {
   averageConsumption: number;
   totalReadingValue: number;
 }
+
+export interface AdvancedReportReadingsResponse {
+  sector: number;
+  totalConnections: number;
+  readingsCompleted: number;
+  missingReadings: number;
+  progressPercentage: number;
+}

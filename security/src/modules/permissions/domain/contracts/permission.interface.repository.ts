@@ -1,4 +1,7 @@
-import { PermissionResponse } from '../schemas/dto/response/permission.response';
+import {
+  CategoryResponseWithPermissions,
+  PermissionResponse,
+} from '../schemas/dto/response/permission.response';
 import { PermissionModel } from '../schemas/models/permission.model';
 
 export interface InterfacePermissionRepository {
@@ -13,4 +16,9 @@ export interface InterfacePermissionRepository {
   getPermissionById(permissionId: number): Promise<PermissionResponse | null>;
   getAllPermissions(): Promise<PermissionResponse[]>;
   verifyPermissionExistsByName(permissionName: string): Promise<boolean>;
+  getPermissionsWithCategory(): Promise<CategoryResponseWithPermissions[]>;
+  getPermissionsByCategoryId(
+    categoryId: number,
+  ): Promise<CategoryResponseWithPermissions | null>;
+  getPermissionSearchAdvanced(search: string): Promise<PermissionResponse[]>;
 }

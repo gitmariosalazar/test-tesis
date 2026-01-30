@@ -205,4 +205,32 @@ export class CategoryPostgreSQLPersistence implements InterfaceCategoryRepositor
       throw error;
     }
   }
+
+  async searchCategoryByName(term: string): Promise<CategoryResponse[]> {
+    try {
+      const query: string = `
+        SELECT 
+          categoria_id AS "category_id",
+          nombre AS "category_name",
+          descripcion AS "category_description",
+          activo AS "is_active"
+        FROM permiso_categoria
+        WHERE nombre ILIKE $1;
+      `;
+      const params = [`%${term}%`];
+
+      const result = await this.postgreSQLService.query<CategorySqlResponse>(
+        query,
+        params,
+      );
+
+      return result.map((categorySql) =>
+        CategoryPostgreSqlAdapter.fromCategorySqlResponseToCategoryResponse(
+          categorySql,
+        ),
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
 }

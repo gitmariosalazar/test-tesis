@@ -6,7 +6,11 @@ import { UserEmployeeResponse } from '../../domain/schemas/dto/response/user-emp
 import { CreateEmployeeUseCase } from '../../application/usecases/create-employee.usecase';
 import { FindEmployeeUseCase } from '../../application/usecases/find-employee.usecase';
 import { UpdateEmployeeUseCase } from '../../application/usecases/update-employee.usecase';
-import { ManageEmployeeUseCase } from '../../application/usecases/manage-employee.usecase';
+import { AssignEmployeeZonesUseCase } from '../../application/usecases/assign-employee-zones.usecase';
+import { ChangeEmployeeStatusUseCase } from '../../application/usecases/change-employee-status.usecase';
+import { ChangeEmployeeSupervisorUseCase } from '../../application/usecases/change-employee-supervisor.usecase';
+import { DeleteEmployeeUseCase } from '../../application/usecases/delete-employee.usecase';
+import { RestoreEmployeeUseCase } from '../../application/usecases/restore-employee.usecase';
 import { EmployeeDomainException } from '../../domain/exceptions/employee.exceptions';
 import { statusCode } from '../../../../settings/environments/status-code';
 
@@ -16,7 +20,11 @@ export class UserEmployeeController {
     private readonly createEmployeeUseCase: CreateEmployeeUseCase,
     private readonly findEmployeeUseCase: FindEmployeeUseCase,
     private readonly updateEmployeeUseCase: UpdateEmployeeUseCase,
-    private readonly manageEmployeeUseCase: ManageEmployeeUseCase,
+    private readonly assignEmployeeZonesUseCase: AssignEmployeeZonesUseCase,
+    private readonly changeEmployeeStatusUseCase: ChangeEmployeeStatusUseCase,
+    private readonly changeEmployeeSupervisorUseCase: ChangeEmployeeSupervisorUseCase,
+    private readonly deleteEmployeeUseCase: DeleteEmployeeUseCase,
+    private readonly restoreEmployeeUseCase: RestoreEmployeeUseCase,
   ) {}
 
   private handleException(error: any): never {
@@ -140,7 +148,7 @@ export class UserEmployeeController {
   @MessagePattern('authentication.user-employee.soft_delete')
   async softDelete(@Payload() employeeId: string): Promise<void> {
     try {
-      await this.updateEmployeeUseCase.softDelete(employeeId);
+      await this.deleteEmployeeUseCase.execute(employeeId);
     } catch (error) {
       this.handleException(error);
     }
@@ -151,7 +159,7 @@ export class UserEmployeeController {
     @Payload() employeeId: string,
   ): Promise<UserEmployeeResponse | null> {
     try {
-      return await this.updateEmployeeUseCase.restore(employeeId);
+      return await this.restoreEmployeeUseCase.execute(employeeId);
     } catch (error) {
       this.handleException(error);
     }
@@ -166,7 +174,7 @@ export class UserEmployeeController {
     @Payload() payload: { employeeId: string; zoneIds: number[] },
   ): Promise<void> {
     try {
-      await this.manageEmployeeUseCase.assignZones(
+      await this.assignEmployeeZonesUseCase.execute(
         payload.employeeId,
         payload.zoneIds,
       );
@@ -180,7 +188,7 @@ export class UserEmployeeController {
     @Payload() payload: { employeeId: string; newStatusId: number },
   ): Promise<UserEmployeeResponse | null> {
     try {
-      return await this.manageEmployeeUseCase.changeStatus(
+      return await this.changeEmployeeStatusUseCase.execute(
         payload.employeeId,
         payload.newStatusId,
       );
@@ -194,7 +202,7 @@ export class UserEmployeeController {
     @Payload() payload: { employeeId: string; supervisorId: string | null },
   ): Promise<UserEmployeeResponse | null> {
     try {
-      return await this.manageEmployeeUseCase.changeSupervisor(
+      return await this.changeEmployeeSupervisorUseCase.execute(
         payload.employeeId,
         payload.supervisorId,
       );

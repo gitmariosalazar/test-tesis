@@ -35,3 +35,11 @@ export interface UserWithRolesAndPermissionsSQLResult extends UserSQLResult {
   roles: string[]; // Comma-separated roles
   permissions: string[]; // Comma-separated permissions
 }
+
+export interface UserWithPermissionsSQLResult extends UserSQLResult {
+  permissions: string[]; // Comma-separated permissions
+}
+
+export interface UserWithRolesSQLResult extends UserSQLResult {
+  roles: string[]; // Comma-separated roles
+}

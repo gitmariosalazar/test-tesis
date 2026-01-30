@@ -1,6 +1,16 @@
 import {
+  AssignPermissionToUserRequest,
+  RemovePermissionFromUserRequest,
+} from '../schemas/dto/request/assign-permission-to-user.request';
+import {
+  AssignRoleToUserRequest,
+  RemoveRoleFromUserRequest,
+} from '../schemas/dto/request/assign-role-to-user.request';
+import {
   UserResponse,
+  UserResponseWithPermissionsResponse,
   UserResponseWithRolesAndPermissionsResponse,
+  UserResponseWithRolesResponse,
 } from '../schemas/dto/response/user.response';
 import { UserModel } from '../schemas/models/user.model';
 
@@ -50,4 +60,31 @@ export interface InterfaceUserRepository {
 
   // Opcional: si usas refresh tokens
   findByRefreshToken(token: string): Promise<UserResponse | null>;
+
+  // Roles
+  assignRoleToUser(
+    assignRoleToUserRequest: AssignRoleToUserRequest,
+  ): Promise<boolean>;
+  removeRoleFromUser(
+    removeRoleFromUserRequest: RemoveRoleFromUserRequest,
+  ): Promise<boolean>;
+  getRolesByUserId(userId: string): Promise<UserResponseWithRolesResponse[]>;
+  getUsersByRoleId(roleId: number): Promise<UserResponse[]>;
+  existsRoleInUser(userId: string, roleId: number): Promise<boolean>;
+
+  // Permissions
+  assignPermissionToUser(
+    assignPermissionToUserRequest: AssignPermissionToUserRequest,
+  ): Promise<boolean>;
+  removePermissionFromUser(
+    removePermissionFromUserRequest: RemovePermissionFromUserRequest,
+  ): Promise<boolean>;
+  getPermissionsByUserId(
+    userId: string,
+  ): Promise<UserResponseWithPermissionsResponse[]>;
+  getUsersByPermissionId(permissionId: number): Promise<UserResponse[]>;
+  existsPermissionInUser(
+    userId: string,
+    permissionId: number,
+  ): Promise<boolean>;
 }

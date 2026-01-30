@@ -17,7 +17,9 @@ import {
   DailyStatsReport,
   SectorStatsReport,
   NoveltyStatsReport,
+  AdvancedReportReadingsResponse,
 } from '../../domain/contracts/reading-report.interface.repository';
+import { GetAdvancedReportReadingsUseCase } from '../../application/usecases/reports/GetAdvancedReportReadingsUseCase';
 
 @Controller()
 export class ReadingReportController {
@@ -30,6 +32,7 @@ export class ReadingReportController {
     private readonly getDailyStatsUseCase: GetDailyStatsReportUseCase,
     private readonly getSectorStatsUseCase: GetSectorStatsReportUseCase,
     private readonly getNoveltyStatsUseCase: GetNoveltyStatsReportUseCase,
+    private readonly getAdvancedReportReadingsUseCase: GetAdvancedReportReadingsUseCase,
   ) {}
 
   @MessagePattern('reading.report.connection.last-10')
@@ -82,5 +85,12 @@ export class ReadingReportController {
     @Payload() month: string,
   ): Promise<NoveltyStatsReport[]> {
     return this.getNoveltyStatsUseCase.execute(month);
+  }
+
+  @MessagePattern('reading.report.advanced-monthly')
+  async getAdvancedReportReadings(
+    @Payload() month: string,
+  ): Promise<AdvancedReportReadingsResponse[]> {
+    return this.getAdvancedReportReadingsUseCase.execute(month);
   }
 }

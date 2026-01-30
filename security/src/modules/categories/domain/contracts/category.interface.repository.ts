@@ -11,4 +11,5 @@ export interface InterfaceCategoryRepository {
   ): Promise<CategoryResponse | null>;
   deleteCategory(categoryId: number): Promise<boolean>;
   verifyCategoryExistsByName(categoryName: string): Promise<boolean>;
+  searchCategoryByName(term: string): Promise<CategoryResponse[]>;
 }

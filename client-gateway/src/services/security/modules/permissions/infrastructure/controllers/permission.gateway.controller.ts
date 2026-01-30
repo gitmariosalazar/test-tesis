@@ -19,7 +19,10 @@ import { CreatePermissionRequest } from '../../domain/schemas/dto/request/create
 import { ApiResponse } from '../../../../../../shared/errors/responses/ApiResponse';
 import { sendKafkaRequest } from '../../../../../../shared/utils/kafka/send.kafka.request';
 import { AuthGuard } from '../../../../../../auth/guard/auth.guard';
-import { PermissionResponse } from '../../domain/schemas/dto/response/permission.response';
+import {
+  CategoryResponseWithPermissions,
+  PermissionResponse,
+} from '../../domain/schemas/dto/response/permission.response';
 
 @Controller('permissions')
 @ApiTags('Permissions Gateway')
@@ -39,6 +42,9 @@ export class PermissionGatewayController implements OnModuleInit {
       'authentication.permission.create-permission',
       'authentication.permission.update-permission',
       'authentication.permission.delete-permission',
+      'authentication.permission.get-permissions-with-category',
+      'authentication.permission.get-permissions-by-category-id',
+      'authentication.permission.get-permission-search-advanced',
     ];
 
     requestPatterns.forEach((pattern) => {
@@ -202,6 +208,87 @@ export class PermissionGatewayController implements OnModuleInit {
       );
       return new ApiResponse(
         'Permission existence verified successfully',
+        response,
+        request.url,
+      );
+    } catch (error) {
+      throw new RpcException(error);
+    }
+  }
+
+  @Get('get-permissions-with-category')
+  @ApiOperation({
+    summary: 'Get permissions with category',
+    description:
+      'Retrieves permissions with category by sending a request to the authentication service via Kafka.',
+  })
+  async getPermissionsWithCategoryGateway(
+    @Req() request: Request,
+  ): Promise<ApiResponse> {
+    try {
+      const response: CategoryResponseWithPermissions[] =
+        await sendKafkaRequest(
+          this.clientKafka.send(
+            'authentication.permission.get-permissions-with-category',
+            {},
+          ),
+        );
+      return new ApiResponse(
+        'Permissions with category retrieved successfully',
+        response,
+        request.url,
+      );
+    } catch (error) {
+      throw new RpcException(error);
+    }
+  }
+
+  @Get('get-permissions-by-category-id/:categoryId')
+  @ApiOperation({
+    summary: 'Get permissions by category ID',
+    description:
+      'Retrieves permissions by category ID by sending a request to the authentication service via Kafka.',
+  })
+  async getPermissionsByCategoryIdGateway(
+    @Req() request: Request,
+    @Param('categoryId', ParseIntPipe) categoryId: number,
+  ): Promise<ApiResponse> {
+    try {
+      const response: CategoryResponseWithPermissions = await sendKafkaRequest(
+        this.clientKafka.send(
+          'authentication.permission.get-permissions-by-category-id',
+          categoryId,
+        ),
+      );
+      return new ApiResponse(
+        'Permissions by category ID retrieved successfully',
+        response,
+        request.url,
+      );
+    } catch (error) {
+      throw new RpcException(error);
+    }
+  }
+
+  @Get('get-permission-search-advanced/:search')
+  @ApiOperation({
+    summary: 'Get permission search advanced',
+    description:
+      'Retrieves permission search advanced by sending a request to the authentication service via Kafka.',
+  })
+  async getPermissionSearchAdvancedGateway(
+    @Req() request: Request,
+    @Param('search') search: string,
+  ): Promise<ApiResponse> {
+    try {
+      const response: PermissionResponse[] = await sendKafkaRequest(
+        this.clientKafka.send(
+          'authentication.permission.get-permission-search-advanced',
+          search,
+        ),
+      );
+      return new ApiResponse(
+        'Permission search advanced retrieved successfully',
         response,
         request.url,
       );

@@ -2,7 +2,10 @@ import { Module } from '@nestjs/common';
 import { KafkaServiceModule } from '../../../../../shared/kafka/kafka-service.module';
 import { RolPermissionController } from '../../controllers/rol-permission.controller';
 import { DatabaseServicePostgreSQL } from '../../../../../shared/connections/database/postgresql/postgresql.service';
-import { RolPermissionService } from '../../../application/services/rol-permission.service';
+import { CreateRolPermissionUseCase } from '../../../application/usecases/create-rol-permission.usecase';
+import { FindRolPermissionUseCase } from '../../../application/usecases/find-rol-permission.usecase';
+import { UpdateRolPermissionUseCase } from '../../../application/usecases/update-rol-permission.usecase';
+import { DeleteRolPermissionUseCase } from '../../../application/usecases/delete-rol-permission.usecase';
 import { RolPermissionPostgreSQLPersistence } from '../../repositories/postgresql/persistence/postgresql.rol-permission.persistence';
 
 @Module({
@@ -10,7 +13,10 @@ import { RolPermissionPostgreSQLPersistence } from '../../repositories/postgresq
   controllers: [RolPermissionController],
   providers: [
     DatabaseServicePostgreSQL,
-    RolPermissionService,
+    CreateRolPermissionUseCase,
+    FindRolPermissionUseCase,
+    UpdateRolPermissionUseCase,
+    DeleteRolPermissionUseCase,
     {
       provide: 'RolPermissionRepository',
       useClass: RolPermissionPostgreSQLPersistence,

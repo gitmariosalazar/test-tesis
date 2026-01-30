@@ -7,12 +7,14 @@ import {
 import { Reading } from '../../../../domain/entities/Reading';
 import { ReadingResponse } from '../../../../application/dtos/response/reading.response';
 import {
+  AdvancedReportReadingsSQLResult,
   ClientEmailSQLResult,
   ClientPhoneSQLResult,
   ReadingBasicInfoSQLResult,
   ReadingInfoSQLResult,
   ReadingSQLResult,
 } from '../../../interfaces/sql/reading-sql.result.interface';
+import { AdvancedReportReadingsResponse } from '../../../../domain/contracts/reading-report.interface.repository';
 
 export class ReadingPostgreSQLAdapter {
   static fromReadingPostgreSQLResultToReadingBasicInfoResponse(
@@ -135,6 +137,19 @@ export class ReadingPostgreSQLAdapter {
       monthReading: readingResultSQL.month_reading,
       startDatePeriod: readingResultSQL.start_date_period,
       endDatePeriod: readingResultSQL.end_date_period,
+    };
+    return response;
+  }
+
+  static fromReadingPostgreSQLResultToAdvancedReportReadingsResponse(
+    readingResultSQL: AdvancedReportReadingsSQLResult,
+  ): AdvancedReportReadingsResponse {
+    const response: AdvancedReportReadingsResponse = {
+      sector: readingResultSQL.sector,
+      totalConnections: readingResultSQL.total_connections,
+      readingsCompleted: readingResultSQL.readings_completed,
+      missingReadings: readingResultSQL.missing_readings,
+      progressPercentage: readingResultSQL.progress_percentage,
     };
     return response;
   }

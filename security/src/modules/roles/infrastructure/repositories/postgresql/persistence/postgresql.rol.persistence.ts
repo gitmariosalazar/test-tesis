@@ -168,4 +168,49 @@ export class RolPostgreSQLPersistence implements InterfaceRolRepository {
       throw error;
     }
   }
+
+  async findByName(name: string): Promise<RolResponse | null> {
+    try {
+      const query: string = `
+        SELECT
+          rol_id as rol_id,
+          nombre as name,
+          descripcion as description,
+          parent_rol_id as parent_rol_id,
+          activo as is_active,
+          fecha_creacion as creation_date
+        FROM roles
+        WHERE nombre = $1;
+      `;
+      const params = [name];
+
+      const result = await this.postgreSQLService.query<RolSQLResponse>(
+        query,
+        params,
+      );
+
+      if (result.length === 0) {
+        return null;
+      }
+
+      return RolAdapter.fromRolSqlResponseToRolResponse(result[0]);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async existsByName(name: string): Promise<boolean> {
+    try {
+      const query: string = `
+        SELECT 1 FROM roles WHERE nombre = $1;
+      `;
+      const params = [name];
+
+      const result = await this.postgreSQLService.query(query, params);
+
+      return result.length > 0;
+    } catch (error) {
+      throw error;
+    }
+  }
 }

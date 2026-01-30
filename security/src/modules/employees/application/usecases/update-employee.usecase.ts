@@ -45,21 +45,4 @@ export class UpdateEmployeeUseCase {
 
     return result;
   }
-
-  async softDelete(employeeId: string): Promise<void> {
-    if (!employeeId)
-      throw new EmployeeDomainException('Employee ID is required');
-    const existing = await this.userEmployeeRepository.findById(employeeId);
-    if (!existing) throw new EmployeeNotFoundException(employeeId);
-    await this.userEmployeeRepository.softDelete(employeeId);
-  }
-
-  async restore(employeeId: string): Promise<UserEmployeeResponse> {
-    if (!employeeId)
-      throw new EmployeeDomainException('Employee ID is required');
-    const restored = await this.userEmployeeRepository.restore(employeeId);
-    if (!restored)
-      throw new EmployeeDomainException('Failed to restore employee');
-    return restored;
-  }
 }

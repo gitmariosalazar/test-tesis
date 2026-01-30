@@ -35,3 +35,11 @@ export interface UserResponseWithRolesAndPermissionsResponse extends UserRespons
   roles: string[];
   permissions: string[];
 }
+
+export interface UserResponseWithRolesResponse extends UserResponse {
+  roles: string[];
+}
+
+export interface UserResponseWithPermissionsResponse extends UserResponse {
+  permissions: string[];
+}

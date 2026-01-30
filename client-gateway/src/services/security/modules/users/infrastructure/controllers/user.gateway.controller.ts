@@ -26,8 +26,18 @@ import { UpdateUserRequest } from '../../domain/schemas/dto/request/update.user.
 import { AuthGuard } from '../../../../../../auth/guard/auth.guard';
 import {
   UserResponse,
+  UserResponseWithPermissionsResponse,
   UserResponseWithRolesAndPermissionsResponse,
+  UserResponseWithRolesResponse,
 } from '../../domain/schemas/dto/response/user.response';
+import {
+  AssignRoleToUserRequest,
+  RemoveRoleFromUserRequest,
+} from '../../domain/schemas/dto/request/assign-role-to-user.request';
+import {
+  AssignPermissionToUserRequest,
+  RemovePermissionFromUserRequest,
+} from '../../domain/schemas/dto/request/assign-permission-to-user.request';
 
 @Controller('users-gateway')
 @ApiTags('Users-Gateway')
@@ -59,6 +69,16 @@ export class UserGatewayController implements OnModuleInit {
       'authentication.user.find_by_email',
       'authentication.user.find_all',
       'authentication.user.get_profile',
+      'authentication.user.assign_role_to_user',
+      'authentication.user.remove_role_from_user',
+      'authentication.user.exists_role_in_user',
+      'authentication.user.get_users_by_role_id',
+      'authentication.user.get_roles_by_user_id',
+      'authentication.user.assign_permission_to_user',
+      'authentication.user.remove_permission_from_user',
+      'authentication.user.exists_permission_in_user',
+      'authentication.user.get_permissions_by_user_id',
+      'authentication.user.get_users_by_permission_id',
     ];
 
     requestPatterns.forEach((pattern) => {
@@ -549,6 +569,231 @@ export class UserGatewayController implements OnModuleInit {
       return new ApiResponse(
         'User profile retrieved successfully',
         user,
+        request.url,
+      );
+    } catch (error) {
+      throw new RpcException(error);
+    }
+  }
+
+  @Post('assign-role-to-user')
+  @ApiOperation({
+    summary: 'Assign role to user',
+    description: 'Assigns a role to a user in the authentication service.',
+  })
+  async assignRoleToUser(
+    @Body() assignRoleToUserRequest: AssignRoleToUserRequest,
+    @Req() request: Request,
+  ): Promise<ApiResponse> {
+    try {
+      const response: void = await sendKafkaRequest(
+        this.clientKafka.send(
+          'authentication.user.assign_role_to_user',
+          assignRoleToUserRequest,
+        ),
+      );
+
+      return new ApiResponse(
+        'Role assigned to user successfully',
+        null,
+        request.url,
+      );
+    } catch (error) {
+      throw new RpcException(error);
+    }
+  }
+
+  @Post('assign-permission-to-user')
+  @ApiOperation({
+    summary: 'Assign permission to user',
+    description:
+      'Assigns a permission to a user in the authentication service.',
+  })
+  async assignPermissionToUser(
+    @Body() assignPermissionToUserRequest: AssignPermissionToUserRequest,
+    @Req() request: Request,
+  ): Promise<ApiResponse> {
+    try {
+      const response: void = await sendKafkaRequest(
+        this.clientKafka.send(
+          'authentication.user.assign_permission_to_user',
+          assignPermissionToUserRequest,
+        ),
+      );
+
+      return new ApiResponse(
+        'Permission assigned to user successfully',
+        null,
+        request.url,
+      );
+    } catch (error) {
+      throw new RpcException(error);
+    }
+  }
+
+  @Delete('remove-role-from-user/:userId/:roleId')
+  @ApiOperation({
+    summary: 'Remove role from user',
+    description: 'Removes a role from a user in the authentication service.',
+  })
+  async removeRoleFromUser(
+    @Param('userId') userId: string,
+    @Param('roleId', ParseIntPipe) roleId: number,
+    @Req() request: Request,
+  ): Promise<ApiResponse> {
+    try {
+      const removeRoleFromUserRequest: RemoveRoleFromUserRequest =
+        new RemoveRoleFromUserRequest(userId, roleId);
+      const response: void = await sendKafkaRequest(
+        this.clientKafka.send(
+          'authentication.user.remove_role_from_user',
+          removeRoleFromUserRequest,
+        ),
+      );
+
+      return new ApiResponse(
+        'Role removed from user successfully',
+        null,
+        request.url,
+      );
+    } catch (error) {
+      throw new RpcException(error);
+    }
+  }
+
+  @Delete('remove-permission-from-user/:userId/:permissionId')
+  @ApiOperation({
+    summary: 'Remove permission from user',
+    description:
+      'Removes a permission from a user in the authentication service.',
+  })
+  async removePermissionFromUser(
+    @Param('userId') userId: string,
+    @Param('permissionId', ParseIntPipe) permissionId: number,
+    @Req() request: Request,
+  ): Promise<ApiResponse> {
+    try {
+      const removePermissionFromUserRequest: RemovePermissionFromUserRequest =
+        new RemovePermissionFromUserRequest(userId, permissionId);
+      const response: void = await sendKafkaRequest(
+        this.clientKafka.send(
+          'authentication.user.remove_permission_from_user',
+          removePermissionFromUserRequest,
+        ),
+      );
+
+      return new ApiResponse(
+        'Permission removed from user successfully',
+        null,
+        request.url,
+      );
+    } catch (error) {
+      throw new RpcException(error);
+    }
+  }
+
+  @Get('get-roles-by-user/:userId')
+  @ApiOperation({
+    summary: 'Get roles by user',
+    description: 'Retrieves roles by user in the authentication service.',
+  })
+  async getRolesByUser(
+    @Param('userId') userId: string,
+    @Req() request: Request,
+  ): Promise<ApiResponse> {
+    try {
+      const response: UserResponseWithRolesResponse[] = await sendKafkaRequest(
+        this.clientKafka.send(
+          'authentication.user.get_roles_by_user_id',
+          userId,
+        ),
+      );
+
+      return new ApiResponse(
+        'Roles retrieved successfully',
+        response,
+        request.url,
+      );
+    } catch (error) {
+      throw new RpcException(error);
+    }
+  }
+
+  @Get('get-permissions-by-user/:userId')
+  @ApiOperation({
+    summary: 'Get permissions by user',
+    description: 'Retrieves permissions by user in the authentication service.',
+  })
+  async getPermissionsByUser(
+    @Param('userId') userId: string,
+    @Req() request: Request,
+  ): Promise<ApiResponse> {
+    try {
+      const response: UserResponseWithPermissionsResponse[] =
+        await sendKafkaRequest(
+          this.clientKafka.send(
+            'authentication.user.get_permissions_by_user_id',
+            userId,
+          ),
+        );
+
+      return new ApiResponse(
+        'Permissions retrieved successfully',
+        response,
+        request.url,
+      );
+    } catch (error) {
+      throw new RpcException(error);
+    }
+  }
+
+  @Get('get-users-by-permission/:permissionId')
+  @ApiOperation({
+    summary: 'Get users by permission',
+    description: 'Retrieves users by permission in the authentication service.',
+  })
+  async getUsersByPermission(
+    @Param('permissionId', ParseIntPipe) permissionId: number,
+    @Req() request: Request,
+  ): Promise<ApiResponse> {
+    try {
+      const response: UserResponse[] = await sendKafkaRequest(
+        this.clientKafka.send(
+          'authentication.user.get_users_by_permission_id',
+          permissionId,
+        ),
+      );
+
+      return new ApiResponse(
+        'Users retrieved successfully',
+        response,
+        request.url,
+      );
+    } catch (error) {
+      throw new RpcException(error);
+    }
+  }
+
+  @Get('get-users-by-role/:roleId')
+  @ApiOperation({
+    summary: 'Get users by role',
+    description: 'Retrieves users by role in the authentication service.',
+  })
+  async getUsersByRole(
+    @Param('roleId', ParseIntPipe) roleId: number,
+    @Req() request: Request,
+  ): Promise<ApiResponse> {
+    try {
+      const response: UserResponse[] = await sendKafkaRequest(
+        this.clientKafka.send(
+          'authentication.user.get_users_by_role_id',
+          roleId,
+        ),
+      );
+
+      return new ApiResponse(
+        'Users retrieved successfully',
+        response,
         request.url,
       );
     } catch (error) {

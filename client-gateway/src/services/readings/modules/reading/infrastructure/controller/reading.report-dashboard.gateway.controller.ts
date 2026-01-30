@@ -17,6 +17,7 @@ import { ApiResponse } from '../../../../../../shared/errors/responses/ApiRespon
 import { sendKafkaRequest } from '../../../../../../shared/utils/kafka/send.kafka.request';
 import { AuthGuard } from '../../../../../../auth/guard/auth.guard';
 import {
+  AdvancedReportReadingsResponse,
   ConnectionLastReadingsReport,
   DailyReadingsReport,
   DailyStatsReport,
@@ -51,6 +52,7 @@ export class ReadingReportDashboardGatewayController implements OnModuleInit {
     this.readingClient.subscribeToResponseOf('reading.report.stats.daily');
     this.readingClient.subscribeToResponseOf('reading.report.stats.sector');
     this.readingClient.subscribeToResponseOf('reading.report.stats.novelty');
+    this.readingClient.subscribeToResponseOf('reading.report.advanced-monthly');
 
     this.logger.log(
       'Response patterns:',
@@ -242,6 +244,29 @@ export class ReadingReportDashboardGatewayController implements OnModuleInit {
       );
       return new ApiResponse(
         `Novelty stats report found successfully!`,
+        response,
+        request.url,
+      );
+    } catch (error) {
+      throw new RpcException(error);
+    }
+  }
+
+  @Get('report/advanced-monthly/:month')
+  @ApiOperation({
+    summary: 'Method GET - Find Advanced Report Readings',
+    description: 'The endpoint allows you to search Advanced Report Readings',
+  })
+  async findAdvancedReportReadings(
+    @Req() request: Request,
+    @Param('month') month: string,
+  ): Promise<ApiResponse> {
+    try {
+      const response: AdvancedReportReadingsResponse[] = await sendKafkaRequest(
+        this.readingClient.send('reading.report.advanced-monthly', month),
+      );
+      return new ApiResponse(
+        `Advanced report readings found successfully!`,
         response,
         request.url,
       );
