@@ -192,6 +192,6 @@ export interface PhoneSqlResponse {
 }
 
 export interface EmailSqlResponse {
-  email_id: number;
-  email: string;
+  correo_electronico_id: number;
+  correo: string;
 }

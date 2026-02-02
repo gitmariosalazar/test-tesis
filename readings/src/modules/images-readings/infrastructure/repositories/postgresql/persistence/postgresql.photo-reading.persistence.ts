@@ -17,10 +17,10 @@ export class PhotoReadingPostgreSQLPersistence implements InterfacePhotoReadingR
   ): Promise<PhotoReadingResponse | null> {
     try {
       const query = `
-        INSERT INTO foto_lectura (lecturaid, imagen_url, clave_catastral, descripcion)
+        INSERT INTO foto_lectura (lectura_id, imagen_url, clave_catastral, descripcion)
         VALUES ($1, $2, $3, $4)
         RETURNING foto_lectura_id AS "photo_reading_id",
-                  lecturaid AS "reading_id",
+                  lectura_id AS "reading_id",
                   imagen_url AS "photo_url",
                   clave_catastral AS "cadastral_key",
                   descripcion AS "description",

@@ -99,8 +99,8 @@ export class ReadingPostgreSQLAdapter {
     clientEmails: ClientEmailSQLResult[],
   ): emails[] {
     const emailsResponse = clientEmails.map((email) => ({
-      emailid: email.email_id,
-      email: email.email,
+      emailid: email.correo_electronico_id,
+      email: email.correo,
     }));
     return emailsResponse;
   }

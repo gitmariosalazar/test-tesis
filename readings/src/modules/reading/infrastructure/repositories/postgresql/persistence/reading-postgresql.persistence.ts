@@ -236,6 +236,7 @@ ORDER BY l.fecha_lectura DESC;
         query,
         params,
       );
+
       const response: ReadingInfoResponse[] = result.map((value) =>
         ReadingPostgreSQLAdapter.fromReadingPostgreSQLResultToReadingInfoResponse(
           value,
@@ -257,7 +258,7 @@ ORDER BY l.fecha_lectura DESC;
 
   async verifyReadingIfExist(readingId: number): Promise<boolean> {
     try {
-      const query: string = `SELECT EXISTS (SELECT 1 FROM lectura l WHERE l.lecturaid = $1)`;
+      const query: string = `SELECT EXISTS (SELECT 1 FROM lectura l WHERE l.lectura_id = $1)`;
       const params: number[] = [readingId];
       const result = await this.postgresqlService.query<boolean>(query, params);
       return result[0];
@@ -366,10 +367,15 @@ ORDER BY l.fecha_lectura DESC;
           ]);
 
           const pendId =
-            pendResult.rowCount > 0 ? pendResult.rows[0].lecturaestadoid : null;
+            pendResult.rowCount > 0
+              ? pendResult.rows[0].lectura_estado_id
+              : null;
           const fuerId =
-            fuerResult.rowCount > 0 ? fuerResult.rows[0].lecturaestadoid : null;
-
+            fuerResult.rowCount > 0
+              ? fuerResult.rows[0].lectura_estado_id
+              : null;
+          console.log('pendId', pendId);
+          console.log('fuerId', fuerId);
           if (!pendId || !fuerId) {
             throw new RpcException({
               statusCode: statusCode.INTERNAL_SERVER_ERROR,
@@ -379,7 +385,7 @@ ORDER BY l.fecha_lectura DESC;
 
           // === 2. CONTROL AVANZADO: REGLAS DE DUPLICADOS ===
           const fechaLecturaInput = reading.readingDate ?? new Date();
-          const mesLectura = reading.currentMonthReading; // '2025-11'
+          const mesLectura = new Date().toISOString().split('T')[0].slice(0, 7);
           const novedadInput = reading.novelty ?? 'LECTURA NORMAL';
 
           const isEspecial =
@@ -480,10 +486,20 @@ ORDER BY l.fecha_lectura DESC;
           (SELECT codigo FROM Lectura_estado WHERE lectura_estado_id = $15) as "status_code";
       `;
 
+          let horaLectura: string | null;
+
+          if (reading.readingTime && reading.readingTime.trim() !== '') {
+            // Asume que viene como 'HH:mm' o 'HH:mm:ss' – puedes validar más si quieres
+            horaLectura = reading.readingTime.trim();
+          } else {
+            // Hora actual sin zona ni texto extra
+            horaLectura = new Date().toISOString().split('T')[1].split('.')[0]; // 'HH:mm:ss'
+          }
+
           const params: (string | Date | number | null)[] = [
             acometidaId,
             fechaLecturaInput,
-            reading.readingTime ?? new Date().toTimeString(), // simple fix
+            horaLectura,
             reading.sector,
             reading.account,
             reading.cadastralKey,
@@ -496,7 +512,7 @@ ORDER BY l.fecha_lectura DESC;
             reading.incomeCode ?? null,
             reading.typeNoveltyReadingId ?? 1,
             estadoId,
-            reading.currentMonthReading ?? null,
+            mesLectura,
           ];
 
           const insertResult = await client.query<ReadingSQLResult>(

@@ -64,8 +64,8 @@ export class ConnectionPostgreSqlAdapter {
     email: EmailSqlResponse[],
   ): EmailResponse[] {
     return email.map((em) => ({
-      emailid: em.email_id,
-      email: em.email,
+      emailid: em.correo_electronico_id,
+      email: em.correo,
     }));
   }
 
@@ -91,21 +91,20 @@ export class ConnectionPostgreSqlAdapter {
   ): ClientResponse {
     return {
       address: person.address,
-  country: person.country,
-  genderId: person.gender_id,
-  lastName: person.last_name,
-  parishId: person.parish_id,
-  personId: person.person_id,
-  birthDate: person.birth_date,
-  firstName:  person.first_name,
-  isDeceased: person.is_deceased,
-  professionId: person.profession_id,
-  civilStatusId: person.civil_status_id,
-  phones: this.fromPhoneSqlResponseToPhoneResponse(person.phones),
-  emails: this.fromEmailSqlResponseToEmailResponse(person.emails),
+      country: person.country,
+      genderId: person.gender_id,
+      lastName: person.last_name,
+      parishId: person.parish_id,
+      personId: person.person_id,
+      birthDate: person.birth_date,
+      firstName: person.first_name,
+      isDeceased: person.is_deceased,
+      professionId: person.profession_id,
+      civilStatusId: person.civil_status_id,
+      phones: this.fromPhoneSqlResponseToPhoneResponse(person.phones),
+      emails: this.fromEmailSqlResponseToEmailResponse(person.emails),
     };
   }
-      
 
   static fromConnectionAndPropertySqlResponseToConnectionAndPropertyResponse(
     connection: ConnectionAndPropertySqlResponse,
@@ -193,22 +192,26 @@ export class ConnectionPostgreSqlAdapter {
       company: connection.company
         ? this.fromCompanySqlResponseToCompanyResponse(connection.company)
         : null,
-      person: connection.person ? this.fromPersonSqlResponseToPersonResponse(connection.person) : null,
+      person: connection.person
+        ? this.fromPersonSqlResponseToPersonResponse(connection.person)
+        : null,
       // Property Data
-      properties: connection.properties ? connection.properties.map((property) => ({
-        propertyId: property.property_id,
-        propertySector: property.property_sector,
-        propertyTypeId: property.property_type_id,
-        propertyAddress: property.property_address,
-        propertyAlleyway: property.property_alleyway,
-        propertyAltitude: property.property_altitude,
-        propertyTypeName: property.property_type_name,
-        propertyPrecision: property.property_precision,
-        propertyReference: property.property_reference,
-        propertyCoordinates: property.property_coordinates,
-        propertyCadastralKey: property.property_cadastral_key,
-        propertyGeometricZone: property.property_geometric_zone,
-      })) : [],
+      properties: connection.properties
+        ? connection.properties.map((property) => ({
+            propertyId: property.property_id,
+            propertySector: property.property_sector,
+            propertyTypeId: property.property_type_id,
+            propertyAddress: property.property_address,
+            propertyAlleyway: property.property_alleyway,
+            propertyAltitude: property.property_altitude,
+            propertyTypeName: property.property_type_name,
+            propertyPrecision: property.property_precision,
+            propertyReference: property.property_reference,
+            propertyCoordinates: property.property_coordinates,
+            propertyCadastralKey: property.property_cadastral_key,
+            propertyGeometricZone: property.property_geometric_zone,
+          }))
+        : [],
     };
   }
 
@@ -247,7 +250,9 @@ export class ConnectionPostgreSqlAdapter {
       company: connection.company
         ? this.fromCompanySqlResponseToCompanyResponse(connection.company)
         : null,
-      person: connection.person ? this.fromPersonSqlResponseToPersonResponse(connection.person) : null,
+      person: connection.person
+        ? this.fromPersonSqlResponseToPersonResponse(connection.person)
+        : null,
     };
   }
 }

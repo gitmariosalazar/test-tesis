@@ -57,7 +57,7 @@ export class ReadingSQLServer2022Persistence implements InterfaceReadingsReposit
         { name: 'cadastralKey', value: reading.getCadastralKey() },
         { name: 'readingDate', value: reading.getReadingDate() },
         { name: 'readingTime', value: reading.getReadingTime() },
-        //  { name: 'incomeCode', value: reading.getIncomeCode() }
+        //{ name: 'incomeCode', value: reading.getIncomeCode() }
       ];
       const result: ReadingSQLResult[] =
         await this.sqlServerService.query<ReadingSQLResult>(query, params);

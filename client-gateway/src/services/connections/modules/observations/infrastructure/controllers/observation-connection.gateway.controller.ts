@@ -25,8 +25,8 @@ import { ObservationConnectionResponse } from '../../domain/schemas/dto/response
 
 @Controller('observation-connection')
 @ApiTags('Observation-Connection')
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
+//@ApiBearerAuth()
+//@UseGuards(AuthGuard)
 export class ObservationConnectionGatewayController implements OnModuleInit {
   private readonly logger = new Logger(
     ObservationConnectionGatewayController.name,

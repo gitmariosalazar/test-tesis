@@ -27,8 +27,8 @@ import {
 
 @Controller('connections')
 @ApiTags('Connections Gateway')
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
+//@ApiBearerAuth()
+//@UseGuards(AuthGuard)
 export class ConnectionGatewayController implements OnModuleInit {
   private readonly logger: Logger = new Logger(
     ConnectionGatewayController.name,

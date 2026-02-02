@@ -18,8 +18,8 @@ import { ObservationDetailsResponse } from '../../domain/schemas/dto/response/ob
 
 @Controller('observations')
 @ApiTags('Observations')
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
+//@ApiBearerAuth()
+//@UseGuards(AuthGuard)
 export class ObservationsGatewayController implements OnModuleInit {
   private readonly logger: Logger = new Logger(
     ObservationsGatewayController.name,

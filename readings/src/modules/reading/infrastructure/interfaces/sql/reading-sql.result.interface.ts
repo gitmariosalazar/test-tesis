@@ -40,8 +40,8 @@ export interface ClientPhoneSQLResult {
 }
 
 export interface ClientEmailSQLResult {
-  email_id: number;
-  email: string;
+  correo_electronico_id: number;
+  correo: string;
 }
 
 export interface ReadingInfoSQLResult {

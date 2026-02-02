@@ -22,8 +22,8 @@ import { LocationResponse } from '../../domain/schemas/dto/response/location.res
 
 @Controller('location')
 @ApiTags('Location Gateway')
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
+//  @ApiBearerAuth()
+//@UseGuards(AuthGuard)
 export class LocationGatewayController implements OnModuleInit {
   private readonly logger = new Logger(LocationGatewayController.name);
   constructor(
