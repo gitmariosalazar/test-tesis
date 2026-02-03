@@ -28,6 +28,7 @@ import {
   ReadingBasicInfoResponse,
   ReadingInfoResponse,
 } from '../../domain/schemas/dto/response/reading-basic.response';
+import { CreateReadingLegacyRequest } from '../../../../../epaa-legacy/modules/readings/domain/schemas/dto/request/create.reading-legacy.request';
 
 @Controller('Readings')
 @ApiTags('Readings')
@@ -47,6 +48,11 @@ export class ReadingGatewayController implements OnModuleInit {
     this.readingClient.subscribeToResponseOf('reading.update-current-reading');
     this.readingClient.subscribeToResponseOf('reading.create-reading');
     this.readingClient.subscribeToResponseOf('reading.find-reading-info');
+
+    // Subscribe to legacy topic here as well since we call it from createReading
+    this.readingClient.subscribeToResponseOf(
+      'epaa-legacy.reading.calculate-reading-value',
+    );
 
     this.logger.log(
       'Response patterns:',
@@ -140,6 +146,23 @@ export class ReadingGatewayController implements OnModuleInit {
     @Req() request: Request,
   ): Promise<ApiResponse> {
     try {
+      console.log('readingRequest', readingRequest);
+      const params = {
+        cadastralKey: readingRequest.cadastralKey,
+        consumptionM3:
+          readingRequest.currentReading - readingRequest.previousReading,
+      };
+      const readingValue: number = await sendKafkaRequest(
+        this.readingClient.send(
+          'epaa-legacy.reading.calculate-reading-value',
+          params,
+        ),
+      );
+
+      readingRequest.readingValue = readingValue;
+
+      console.log('readingRequest', readingRequest);
+
       const response: ReadingResponse = await sendKafkaRequest<ReadingResponse>(
         this.readingClient.send('reading.create-reading', readingRequest),
       );
@@ -150,7 +173,7 @@ export class ReadingGatewayController implements OnModuleInit {
           message: 'Failed to create reading',
         });
       }
-
+      /*
       const updatedReadingLegacyRequest: UpdateReadingLegacyRequest =
         new UpdateReadingLegacyRequest();
       updatedReadingLegacyRequest.sector = response.sector;
@@ -193,7 +216,8 @@ export class ReadingGatewayController implements OnModuleInit {
           request: updatedReadingLegacyRequest,
         },
       );
-      /*
+      */
+
       const reading: CreateReadingLegacyRequest =
         new CreateReadingLegacyRequest();
       reading.previousReading = parseFloat(
@@ -214,7 +238,7 @@ export class ReadingGatewayController implements OnModuleInit {
       reading.month = response.readingDate
         ? MONTHS[new Date(response.readingDate).getMonth() + 1]
         : MONTHS[new Date().getMonth() + 1];
-      reading.readingValue = parseFloat(response.readingValue!.toString());
+      reading.readingValue = parseFloat('0');
 
       this.logger.log(
         `Sending createReadingLegacy request: ${JSON.stringify(reading)}`,
@@ -224,7 +248,6 @@ export class ReadingGatewayController implements OnModuleInit {
         'epaa-legacy.reading.create-reading-legacy',
         reading,
       );
-      */
 
       return new ApiResponse(
         `Reading created successfully!`,

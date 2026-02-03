@@ -16,4 +16,8 @@ export interface InterfaceReadingUseCase {
   //deleteReading(id: string): Promise<void>;
   //getReadingById(id: string): Promise<ReadingResponse>;
   //getAllReadings(): Promise<ReadingResponse[]>;
+  calculateReadingValue(
+    cadastralKey: string,
+    consumptionM3: number,
+  ): Promise<number>;
 }

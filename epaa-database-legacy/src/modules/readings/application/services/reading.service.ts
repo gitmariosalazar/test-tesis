@@ -106,6 +106,7 @@ export class ReadingService implements InterfaceReadingUseCase {
     request: UpdateReadingRequest,
   ): Promise<ReadingResponse> {
     try {
+      console.log('Received updateCurrentReading request in Service:', request);
       const requiredFieldsToUpdate: string[] = [
         'currentReading',
         'novelty',
@@ -146,7 +147,6 @@ export class ReadingService implements InterfaceReadingUseCase {
 
       const existingReading =
         await this.readingsRepository.findCurrentReading(params);
-      console.log('Reading to update:', existingReading);
 
       if (!existingReading) {
         throw new RpcException({
@@ -160,8 +160,12 @@ export class ReadingService implements InterfaceReadingUseCase {
         existingReading.readingTime !== null ||
         existingReading.currentReading !== null
       ) {
-        console.log('Checking: ', existingReading.readingDate, 
-          existingReading.readingTime, existingReading.currentReading)
+        console.log(
+          'Checking: ',
+          existingReading.readingDate,
+          existingReading.readingTime,
+          existingReading.currentReading,
+        );
         throw new RpcException({
           statusCode: statusCode.CONFLICT,
           message: 'Reading has already been recorded and cannot be updated',
@@ -186,6 +190,21 @@ export class ReadingService implements InterfaceReadingUseCase {
       }
 
       return updatedReading;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async calculateReadingValue(
+    cadastralKey: string,
+    consumptionM3: number,
+  ): Promise<number> {
+    try {
+      const readingValue = await this.readingsRepository.calculateReadingValue(
+        cadastralKey,
+        consumptionM3,
+      );
+      return readingValue;
     } catch (error) {
       throw error;
     }

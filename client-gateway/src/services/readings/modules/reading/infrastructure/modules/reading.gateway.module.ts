@@ -16,9 +16,9 @@ import { ReadingReportDashboardGatewayController } from '../controller/reading.r
           },
           consumer: {
             groupId: environments.READINGS_KAFKA_GROUP_ID,
-            sessionTimeout: 30000,
-            heartbeatInterval: 10000,
-            rebalanceTimeout: 60000,
+            sessionTimeout: 60000, // Increased to 60s
+            heartbeatInterval: 5000, // More frequent heartbeats
+            rebalanceTimeout: 120000, // Allow more time for rebalance
             subscribe: {
               fromBeginning: true,
             },
@@ -36,9 +36,9 @@ import { ReadingReportDashboardGatewayController } from '../controller/reading.r
           },
           consumer: {
             groupId: environments.EPAA_LEGACY_READINGS_KAFKA_GROUP_ID,
-            sessionTimeout: 30000,
-            heartbeatInterval: 10000,
-            rebalanceTimeout: 60000,
+            sessionTimeout: 60000, // Increased to 60s
+            heartbeatInterval: 5000, // More frequent heartbeats
+            rebalanceTimeout: 120000, // Allow more time for rebalance
             subscribe: {
               fromBeginning: true,
             },

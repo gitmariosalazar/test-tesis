@@ -33,3 +33,14 @@ export interface ReadingSQL2000Result {
   readingTime: string | null;
   cadastralKey: string;
 }
+
+export interface TarifaSQLResult {
+  Tarifa: string;
+}
+
+export interface RangoTarifaSQLResult {
+  Minimo: number;
+  Maximo: number;
+  Base: number;
+  Adicional: number;
+}

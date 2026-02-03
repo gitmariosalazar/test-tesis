@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { UpdateReadingRequest } from '../dtos/request/update-reading.request';
 import { ReadingResponse } from '../dtos/response/reading.response';
 import { InterfaceReadingRepository } from '../../domain/contracts/reading.interface.repository';
-import { Reading } from '../../domain/entities/Reading';
+import { ReadingModel } from '../../domain/schemas/model/reading.model';
 import { ReadingMapper } from '../mappers/reading.mapper';
 // import { RpcException } from '@nestjs/microservices'; // Or use Domain Exceptions
 
@@ -36,7 +36,7 @@ export class UpdateReadingUseCase {
       ReadingMapper.fromUpdateReadingRequestToReadingModel(request);
 
     // We need to ensure the ID matches and values are correct
-    const updatedReading = new Reading(
+    const updatedReading = new ReadingModel(
       readingId,
       toUpdate.connectionId,
       toUpdate.readingDate,
@@ -66,6 +66,6 @@ export class UpdateReadingUseCase {
       );
     }
 
-    return ReadingMapper.fromReadingEntityToReadingResponse(result);
+    return ReadingMapper.fromReadingModelToReadingResponse(result);
   }
 }

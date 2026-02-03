@@ -3,6 +3,8 @@ import { SQLServerReadingAdapter } from '../adapters/sql-server.reading.adapter'
 import {
   ReadingSQL2000Result,
   ReadingSQLResult,
+  RangoTarifaSQLResult,
+  TarifaSQLResult,
 } from '../../../interfaces/reading.sql.response';
 import { InterfaceReadingsRepository } from '../../../../domain/contracts/readings.interface.repository';
 import { DatabaseServiceSQLServer2000 } from '../../../../../../shared/connections/database/sqlserver/sqlserver-2000.service';
@@ -23,9 +25,7 @@ class DatabaseError extends Error {
 }
 
 @Injectable()
-export class ReadingSQLServer2000Persistence
-  implements InterfaceReadingsRepository
-{
+export class ReadingSQLServer2000Persistence implements InterfaceReadingsRepository {
   constructor(
     private readonly sqlServerService: DatabaseServiceSQLServer2000,
   ) {}
@@ -343,6 +343,102 @@ export class ReadingSQLServer2000Persistence
         `Failed to update reading: ${error.message}`,
         error.code,
       );
+    }
+  }
+
+  async calculateReadingValue(
+    cadastralKey: string,
+    consumptionM3: number,
+  ): Promise<number> {
+    try {
+      const vSector = cadastralKey.split('-')[0];
+      const vCuenta = cadastralKey.split('-')[1];
+
+      // 1. Obtener la tarifa de la acometida
+      const queryAcometida = `
+      SELECT Tarifa
+      FROM AP_ACOMETIDAS
+      WHERE Cuenta = ${Number(vCuenta)} AND Sector = ${Number(vSector)}
+    `;
+
+      const resultAcometida =
+        await this.sqlServerService.query<TarifaSQLResult>(queryAcometida);
+
+      if (!resultAcometida || resultAcometida.length === 0) {
+        console.warn(
+          `No se encontró acometida para cuenta: ${vCuenta} - sector: ${vSector}`,
+        );
+        return 0;
+      }
+
+      const tarifa: string = resultAcometida[0].Tarifa.trim();
+
+      // 2. Obtener los rangos de tarifas
+      const queryTarifas = `
+      SELECT Minimo, Maximo, Base, Adicional
+      FROM AP_TARIFAS
+      WHERE Nombre = '${String(tarifa)}'
+      ORDER BY Minimo ASC
+    `;
+
+      const resultTarifas =
+        await this.sqlServerService.query<RangoTarifaSQLResult>(queryTarifas);
+
+      if (!resultTarifas || resultTarifas.length === 0) {
+        console.warn(`No se encontraron rangos para la tarifa: ${tarifa}`);
+        return 0;
+      }
+
+      let min = 0;
+      let max = 0;
+      let bas = 0;
+      let adic = 0;
+      let bMinimo = 0;
+      let bMaximo = 0;
+
+      // Tomamos el primer y último para mensajes de error
+      bMinimo = resultTarifas[0].Minimo;
+      bMaximo = resultTarifas[resultTarifas.length - 1].Maximo;
+
+      // Buscar el rango correspondiente
+      for (const row of resultTarifas) {
+        const minimo = Number(row.Minimo);
+        const maximo = Number(row.Maximo);
+
+        if (consumptionM3 >= minimo && consumptionM3 <= maximo) {
+          min = minimo;
+          max = maximo;
+          bas = Number(row.Base);
+          adic = Number(row.Adicional);
+          break; // encontrado → salimos
+        }
+      }
+
+      // Si no encontró ningún rango válido
+      if (bas === 0) {
+        console.warn(
+          `Consumo ${consumptionM3} m³ fuera de rango para cuenta '${vCuenta.trim()}' ` +
+            `sector '${vSector.trim()}' - Tarifa '${tarifa}'. ` +
+            `Rango permitido: ${bMinimo} a ${bMaximo} m³. Consulte el pliego tarifario.`,
+        );
+        return 0;
+      }
+
+      // Cálculo final
+      let valorPagar: number;
+
+      if (consumptionM3 >= 0 && consumptionM3 <= 10) {
+        valorPagar = bas;
+      } else {
+        // valor base + adicional por m³ extras (a partir de min - 1)
+        const m3Adicionales = consumptionM3 - (min - 1);
+        valorPagar = bas + m3Adicionales * adic;
+      }
+
+      return valorPagar;
+    } catch (error) {
+      console.error('Error al calcular ValorPagarConsumo:', error);
+      throw error;
     }
   }
 }

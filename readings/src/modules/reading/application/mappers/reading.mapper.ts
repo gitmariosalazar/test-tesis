@@ -1,19 +1,19 @@
 import { CreateReadingRequest } from '../dtos/request/create-reading.request';
 import { UpdateReadingRequest } from '../dtos/request/update-reading.request';
-import { Reading } from '../../domain/entities/Reading';
+import { ReadingModel } from '../../domain/schemas/model/reading.model';
 import { ReadingResponse } from '../dtos/response/reading.response';
 
 export class ReadingMapper {
   static fromCreateReadingRequestToReadingModel(
     readingRequest: CreateReadingRequest,
-  ): Reading {
+  ): ReadingModel {
     const [year, month] = readingRequest.previousMonthReading
       .split('-')
       .map(Number);
     const nextDate = new Date(year, month - 1 + 1, 1);
     const currentMonthReading = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
 
-    return new Reading(
+    return new ReadingModel(
       0, // ID
       readingRequest.connectionId,
       readingRequest.readingDate,
@@ -35,11 +35,11 @@ export class ReadingMapper {
 
   static fromUpdateReadingRequestToReadingModel(
     readingRequest: UpdateReadingRequest,
-  ): Reading {
+  ): ReadingModel {
     const date: Date = new Date();
     const hour: string = date.getTime().toLocaleString();
 
-    return new Reading(
+    return new ReadingModel(
       readingRequest.readingId,
       readingRequest.connectionId,
       date, // readingDate
@@ -58,7 +58,9 @@ export class ReadingMapper {
       '', // currentMonthReading (default or needs to be in request)
     );
   }
-  static fromReadingEntityToReadingResponse(reading: Reading): ReadingResponse {
+  static fromReadingModelToReadingResponse(
+    reading: ReadingModel,
+  ): ReadingResponse {
     const response: ReadingResponse = {
       readingId: reading.id,
       connectionId: reading.connectionId,

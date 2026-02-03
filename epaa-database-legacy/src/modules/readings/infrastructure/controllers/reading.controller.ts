@@ -49,4 +49,22 @@ export class ReadingController {
     );
     return this.readingService.updateCurrentReading(data.params, data.request);
   }
+
+  @Get('calculate-reading-value')
+  @MessagePattern('epaa-legacy.reading.calculate-reading-value')
+  calculateReadingValue(
+    @Payload()
+    params: {
+      cadastralKey: string;
+      consumptionM3: number;
+    },
+  ) {
+    console.log(
+      `Received calculateReadingValue request: ${JSON.stringify(params)}`,
+    );
+    return this.readingService.calculateReadingValue(
+      params.cadastralKey,
+      params.consumptionM3,
+    );
+  }
 }

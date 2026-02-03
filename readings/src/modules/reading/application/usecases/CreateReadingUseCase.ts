@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { toZonedTime } from 'date-fns-tz';
 import { CreateReadingRequest } from '../dtos/request/create-reading.request';
 import { ReadingResponse } from '../dtos/response/reading.response';
 import { InterfaceReadingRepository } from '../../domain/contracts/reading.interface.repository';
-import { Reading } from '../../domain/entities/Reading';
+import { ReadingModel } from '../../domain/schemas/model/reading.model';
 import { ReadingCreatedEvent } from '../../domain/events/ReadingCreatedEvent';
 import { ReadingMapper } from '../mappers/reading.mapper';
 // import { EventBus } from ... (We will need an event bus interface)
@@ -21,10 +22,10 @@ export class CreateReadingUseCase {
 
     // 2. Map DTO to Entity
     // Note: We need a Mapper. For now manual or using the existing mapper if refactored.
-    const reading = new Reading(
+    const reading = new ReadingModel(
       0, // ID
       request.connectionId,
-      new Date(), // Date
+      toZonedTime(new Date(), 'America/Guayaquil'), // Date
       '', // Time
       request.sector,
       request.account,
@@ -52,6 +53,6 @@ export class CreateReadingUseCase {
 
     // 5. Return DTO
     // 5. Return DTO
-    return ReadingMapper.fromReadingEntityToReadingResponse(savedReading);
+    return ReadingMapper.fromReadingModelToReadingResponse(savedReading);
   }
 }

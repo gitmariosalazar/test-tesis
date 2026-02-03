@@ -1,5 +1,6 @@
 import { InterfaceReadingRepository } from './../../../../domain/contracts/reading.interface.repository';
 import { Injectable } from '@nestjs/common';
+import { toZonedTime } from 'date-fns-tz';
 import {
   ReadingBasicInfoSQLResult,
   ReadingInfoSQLResult,
@@ -11,10 +12,11 @@ import {
   ReadingBasicInfoResponse,
   ReadingInfoResponse,
 } from '../../../../application/dtos/response/reading-basic.response';
-import { Reading } from '../../../../domain/entities/Reading';
+import { ReadingModel } from '../../../../domain/schemas/model/reading.model';
 import { ReadingResponse } from '../../../../application/dtos/response/reading.response';
 import { RpcException } from '@nestjs/microservices';
 import { statusCode } from '../../../../../../settings/environments/status-code';
+import { getTypeCurrentConsumption } from '../../../../../../shared/types/novelty.type';
 
 @Injectable()
 export class ReadingPersistencePostgreSQL implements InterfaceReadingRepository {
@@ -269,14 +271,14 @@ ORDER BY l.fecha_lectura DESC;
 
   async updateCurrentReading(
     readingId: number,
-    reading: Reading,
-  ): Promise<Reading | null> {
+    reading: ReadingModel,
+  ): Promise<ReadingModel | null> {
     try {
       const query: string = `
         UPDATE lectura
         SET
-            fecha_lectura = DATE 'now',
-            hora_lectura = TO_CHAR(NOW()::TIME, 'HH24:MI:SS'),
+            fecha_lectura = (NOW() AT TIME ZONE 'America/Guayaquil')::DATE,
+            hora_lectura = TO_CHAR(NOW() AT TIME ZONE 'America/Guayaquil', 'HH24:MI:SS'),
             valor_lectura = $1,
             tasa_alcantarillado = $2,
             lectura_actual = $3,
@@ -318,7 +320,7 @@ ORDER BY l.fecha_lectura DESC;
       if (result.length === 0) {
         return null;
       }
-      return ReadingPostgreSQLAdapter.fromReadingSQLResultToReadingEntity(
+      return ReadingPostgreSQLAdapter.fromReadingSQLResultToReadingModel(
         result[0],
       );
     } catch (error) {
@@ -326,37 +328,13 @@ ORDER BY l.fecha_lectura DESC;
     }
   }
 
-  // NOTE: Implementing save vs create/update separation.
-  // Repository interface has save(reading). We can assume save implies update or create?
-  // Current refactor has explicit update in UseCase calling update.
-  // Let's implement save as create for now or assume strict separation if interface has both.
-  // Interface has save, update, createReading -> wait, interface had createReading(ReadingModel).
-  // I updated interface to: save(reading), update(reading), createReading(reading).
-  // Let's implement createReading as strict create.
-
-  async createReading(reading: Reading): Promise<Reading | null> {
-    // Note: The interface return type for createReading was Promise<ReadingResponse | null>.
-    // But Clean Architecture suggests returning Entity.
-    // However, the Use Case expects ReadingResponse from the Repository?
-    // No, UseCase calls repository, gets Entity, then maps to Response.
-    // But I might have left the interface return type as ReadingResponse in previous edits to minimize breakage.
-    // Let's check the interface content I wrote earlier.
-    // "createReading(readingModel: Reading): Promise<ReadingResponse | null>;" was the last edit attempt.
-    // Okay, I will return ReadingResponse for now to match the likely interface state,
-    // OR I should fix the interface to return Entity.
-    // Strict Clean Arch -> Repository returns Entity.
-    // Let's stick to returning Entity and map it in UseCase?
-    // But UseCase was doing: "return updated;" where updated came from repo.
-    // Let's return ReadingResponse for now to ensure compatibility with what I wrote in UseCase.
-    // Actually, createReading in Persistence seems to return ReadingResponse currently via adapter.
-
+  async createReading(reading: ReadingModel): Promise<ReadingModel | null> {
     try {
       const acometidaId = reading.connectionId;
 
       // === TRANSACCIÓN CON CONTROL AVANZADO DE DUPLICADOS ===
       const result = await this.postgresqlService.transaction(
         async (client) => {
-          // ... (Existing Transaction Logic kept same, updated with reading getters) ...
           // === 1. Obtener IDs de estados ===
           const pendQuery = `SELECT lectura_estado_id FROM lectura_estado WHERE codigo = 'PEND' LIMIT 1;`;
           const fuerQuery = `SELECT lectura_estado_id FROM lectura_estado WHERE codigo = 'FUER' LIMIT 1;`;
@@ -384,9 +362,16 @@ ORDER BY l.fecha_lectura DESC;
           }
 
           // === 2. CONTROL AVANZADO: REGLAS DE DUPLICADOS ===
-          const fechaLecturaInput = reading.readingDate ?? new Date();
-          const mesLectura = new Date().toISOString().split('T')[0].slice(0, 7);
+          const timeZone = 'America/Guayaquil';
+          const now = new Date();
+          const zonedDate = toZonedTime(now, timeZone);
+
+          const fechaLecturaInput = reading.readingDate ?? zonedDate;
+          const mesLectura = zonedDate.toISOString().split('T')[0].slice(0, 7); // YYYY-MM
           const novedadInput = reading.novelty ?? 'LECTURA NORMAL';
+          const observation = novedadInput.includes('LECTURA NORMAL')
+            ? 'NORMAL'
+            : novedadInput || 'LECTURA NORMAL';
 
           const isEspecial =
             novedadInput.includes('INICIAL') ||
@@ -429,6 +414,20 @@ ORDER BY l.fecha_lectura DESC;
             });
           }
 
+          // === 2.5 Obterner Promedio Consumo ===
+          const avgQuery = `SELECT average_consumption FROM consumo_promedio WHERE acometida_id = $1 LIMIT 1;`;
+          const avgResult = await client.query(avgQuery, [acometidaId]);
+          const averageConsumption =
+            avgResult.rowCount > 0
+              ? parseFloat(avgResult.rows[0].average_consumption)
+              : 0;
+
+          const calculatedNovelty = getTypeCurrentConsumption(
+            reading.previousReading,
+            reading.currentReading,
+            averageConsumption,
+          );
+
           // === 3. Verificar rango de período ===
           const nextQuery = `
         SELECT fecha_inicio_periodo, fecha_fin_periodo
@@ -438,14 +437,14 @@ ORDER BY l.fecha_lectura DESC;
           const nextResult = await client.query(nextQuery, [acometidaId]);
 
           let estadoId = pendId;
-          let novedadFinal =
-            novedadInput || 'LECTURA NORMAL (dentro de período)';
+          let novedadFinal = calculatedNovelty.title;
+          let observationFinal = observation;
 
           const hoy = new Date(fechaLecturaInput);
           hoy.setHours(0, 0, 0, 0);
 
           if (nextResult.rowCount > 0) {
-            const { fechainicioperiodo: inicio, fechafinperiodo: fin } =
+            const { fecha_inicio_periodo: inicio, fecha_fin_periodo: fin } =
               nextResult.rows[0];
             const inicioDate = new Date(inicio);
             const finDate = new Date(fin);
@@ -454,11 +453,11 @@ ORDER BY l.fecha_lectura DESC;
 
             if (!dentro) {
               estadoId = fuerId;
-              novedadFinal = novedadInput || 'LECTURA FUERA DE PERIODO';
+              observationFinal = observation || 'LECTURA FUERA DE PERIODO';
             }
           } else {
             estadoId = fuerId;
-            novedadFinal = novedadInput || 'LECTURA SIN PERIODO DEFINIDO';
+            observationFinal = observation || 'LECTURA SIN PERIODO DEFINIDO';
           }
 
           // === 4. INSERT Lectura con estado y novedad correctos ===
@@ -466,8 +465,8 @@ ORDER BY l.fecha_lectura DESC;
         INSERT INTO lectura(
           acometida_id, fecha_lectura, hora_lectura, sector, cuenta, clave_catastral,
           valor_lectura, tasa_alcantarillado, lectura_anterior, lectura_actual,
-          codigo_ingreso_renta, novedad, codigo_ingreso, tipo_novedad_lectura_id, lectura_estado_id, mes_lectura
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+          codigo_ingreso_renta, novedad, codigo_ingreso, tipo_novedad_lectura_id, lectura_estado_id, mes_lectura,observacion
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         RETURNING
           lectura_id as "reading_id",
           acometida_id as "connection_id",
@@ -489,12 +488,24 @@ ORDER BY l.fecha_lectura DESC;
           let horaLectura: string | null;
 
           if (reading.readingTime && reading.readingTime.trim() !== '') {
-            // Asume que viene como 'HH:mm' o 'HH:mm:ss' – puedes validar más si quieres
             horaLectura = reading.readingTime.trim();
           } else {
-            // Hora actual sin zona ni texto extra
-            horaLectura = new Date().toISOString().split('T')[1].split('.')[0]; // 'HH:mm:ss'
+            // Create a time string in HH:mm:ss format for Ecuador time
+            const ecTime = toZonedTime(new Date(), 'America/Guayaquil');
+            // Format manually or use a formatter if imported. Simple ISO split might be UTC.
+            // toZonedTime returns a Date instance tailored for the zone, but .toISOString() converts back to UTC.
+            // We need string representation in that zone.
+            // Using Intl.DateTimeFormat for safety.
+            horaLectura = new Intl.DateTimeFormat('en-GB', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              timeZone: 'America/Guayaquil',
+              hour12: false,
+            }).format(new Date());
           }
+
+          console.log('novedadFinal', reading);
 
           const params: (string | Date | number | null)[] = [
             acometidaId,
@@ -513,6 +524,7 @@ ORDER BY l.fecha_lectura DESC;
             reading.typeNoveltyReadingId ?? 1,
             estadoId,
             mesLectura,
+            observationFinal,
           ];
 
           const insertResult = await client.query<ReadingSQLResult>(
@@ -532,8 +544,7 @@ ORDER BY l.fecha_lectura DESC;
       );
 
       // === RESPUESTA ENRIQUECIDA ===
-      // Convert SQL result back to Entity
-      return ReadingPostgreSQLAdapter.fromReadingSQLResultToReadingEntity(
+      return ReadingPostgreSQLAdapter.fromReadingSQLResultToReadingModel(
         result,
       );
     } catch (error) {
@@ -541,11 +552,7 @@ ORDER BY l.fecha_lectura DESC;
     }
   }
 
-  // Fallback for save/update separation if required by interface
-  async save(reading: Reading): Promise<Reading> {
-    // For now throwing or implementing simple save
-    throw new Error(
-      'Method not implemented fully. Use Create/Update specific methods.',
-    );
+  async save(reading: ReadingModel): Promise<ReadingModel> {
+    return this.createReading(reading) as Promise<ReadingModel>;
   }
 }

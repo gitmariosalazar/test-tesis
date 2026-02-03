@@ -47,6 +47,9 @@ export class ReadingLegacyGatewayController implements OnModuleInit {
       'Response patterns:',
       this.readingClient['responsePatterns'],
     );
+    this.readingClient.subscribeToResponseOf(
+      'epaa-legacy.reading.calculate-reading-value',
+    );
 
     this.logger.log(
       'ReadingLegacyGatewayController initialized and connected to Kafka',
@@ -150,6 +153,40 @@ export class ReadingLegacyGatewayController implements OnModuleInit {
     } catch (error) {
       this.logger.error(
         `Error in updateCurrentReading: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(error);
+    }
+  }
+
+  @Get('calculate-reading-value')
+  @ApiOperation({
+    summary: 'Method GET - Calculate Reading Value (Legacy)',
+  })
+  async calculateReadingValue(
+    @Req() request: Request,
+    @Query() params: { cadastralKey: string; consumptionM3: number },
+  ): Promise<ApiResponse> {
+    try {
+      this.logger.log(
+        `Sending calculateReadingValue request: ${JSON.stringify(params)}`,
+      );
+
+      const response: number = await sendKafkaRequest(
+        this.readingClient.send(
+          'epaa-legacy.reading.calculate-reading-value',
+          params,
+        ),
+      );
+
+      return new ApiResponse(
+        `Reading value calculated successfully!`,
+        response,
+        request.url,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error in calculateReadingValue: ${error.message}`,
         error.stack,
       );
       throw new RpcException(error);

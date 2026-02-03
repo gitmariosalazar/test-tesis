@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { SQLServerReadingAdapter } from '../adapters/sql-server.reading.adapter';
-import { ReadingSQLResult } from '../../../interfaces/reading.sql.response';
+import {
+  RangoTarifaSQLResult,
+  ReadingSQLResult,
+  TarifaSQLResult,
+} from '../../../interfaces/reading.sql.response';
 import { InterfaceReadingsRepository } from '../../../../domain/contracts/readings.interface.repository';
 import { DatabaseServiceSQLServer2022 } from '../../../../../../shared/connections/database/sqlserver/sqlserver-2022.service';
 import { ReadingResponse } from '../../../../domain/schemas/dto/response/readings.response';
@@ -116,6 +120,14 @@ export class ReadingSQLServer2022Persistence implements InterfaceReadingsReposit
     reading: ReadingModel,
   ): Promise<ReadingResponse> {
     try {
+      console.log(
+        'Received updateCurrentReading request in Persistence:',
+        reading,
+      );
+      console.log(
+        'Received updateCurrentReading params in Persistence:',
+        params,
+      );
       const query: string = `
       UPDATE AP_LECTURAS
       SET
@@ -185,6 +197,128 @@ export class ReadingSQLServer2022Persistence implements InterfaceReadingsReposit
       return SQLServerReadingAdapter.toDomain(updatedReading[0]);
     } catch (error) {
       throw error;
+    }
+  }
+
+  async calculateReadingValue(
+    cadastralKey: string,
+    consumptionM3: number,
+  ): Promise<number> {
+    try {
+      const vSector = cadastralKey.split('-')[0];
+      const vCuenta = cadastralKey.split('-')[1];
+
+      // 1. Obtener la tarifa de la acometida
+      const queryAcometida = `
+      SELECT "Tarifa"
+      FROM "AP_ACOMETIDAS"
+      WHERE "Cuenta" = @account AND "Sector" = @sector
+    `;
+
+      const queryParams: any[] = [
+        {
+          name: 'sector',
+          value: vSector,
+        },
+        {
+          name: 'account',
+          value: vCuenta,
+        },
+      ];
+
+      const resultAcometida =
+        await this.sqlServerService.query<TarifaSQLResult>(
+          queryAcometida,
+          queryParams,
+        );
+
+      if (resultAcometida.length === 0) {
+        console.warn(
+          `No se encontró acometida para cuenta: ${vCuenta} - sector: ${vSector}`,
+        );
+        return 0;
+      }
+
+      const tarifa: string = resultAcometida[0].Tarifa.trim();
+
+      // 2. Obtener los rangos de tarifas
+      const queryTarifas = `
+      SELECT "Minimo", "Maximo", "Base", "Adicional"
+      FROM "AP_TARIFAS"
+      WHERE "Nombre" = @tarifa
+      ORDER BY "Minimo" ASC
+    `;
+
+      const queryParamsTarifas: any[] = [
+        {
+          name: 'tarifa',
+          value: tarifa,
+        },
+      ];
+
+      const resultTarifas =
+        await this.sqlServerService.query<RangoTarifaSQLResult>(
+          queryTarifas,
+          queryParamsTarifas,
+        );
+
+      if (resultTarifas.length === 0) {
+        console.warn(`No se encontraron rangos para la tarifa: ${tarifa}`);
+        return 0;
+      }
+
+      let min = 0;
+      let max = 0;
+      let bas = 0;
+      let adic = 0;
+      let bMinimo = 0;
+      let bMaximo = 0;
+
+      // Tomamos el primer y último para mensajes de error
+      bMinimo = resultTarifas[0].Minimo;
+      bMaximo = resultTarifas[resultTarifas.length - 1].Maximo;
+
+      // Buscar el rango correspondiente
+      for (const row of resultTarifas) {
+        const minimo = Number(row.Minimo);
+        const maximo = Number(row.Maximo);
+
+        if (consumptionM3 >= minimo && consumptionM3 <= maximo) {
+          min = minimo;
+          max = maximo;
+          bas = Number(row.Base);
+          adic = Number(row.Adicional);
+          break; // encontrado → salimos
+        }
+      }
+
+      // Si no encontró ningún rango válido
+      if (bas === 0) {
+        console.warn(
+          `Consumo ${consumptionM3} m³ fuera de rango para cuenta '${vCuenta.trim()}' ` +
+            `sector '${vSector.trim()}' - Tarifa '${tarifa}'. ` +
+            `Rango permitido: ${bMinimo} a ${bMaximo} m³. Consulte el pliego tarifario.`,
+        );
+        // Aquí podrías lanzar un error o mostrar un mensaje en UI
+        // alert(...) si estás en frontend, pero como es función, retornamos 0
+        return 0;
+      }
+
+      // Cálculo final
+      let valorPagar: number;
+
+      if (consumptionM3 >= 0 && consumptionM3 <= 10) {
+        valorPagar = bas;
+      } else {
+        // valor base + adicional por m³ extras (a partir de min - 1)
+        const m3Adicionales = consumptionM3 - (min - 1);
+        valorPagar = bas + m3Adicionales * adic;
+      }
+
+      return valorPagar;
+    } catch (error) {
+      console.error('Error al calcular ValorPagarConsumo:', error);
+      throw error; // o retornar 0 según tu política
     }
   }
 }

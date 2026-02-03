@@ -8,7 +8,7 @@ import {
 import { RpcException } from '@nestjs/microservices';
 import { UpdateReadingRequest } from '../../application/dtos/request/update-reading.request';
 import { ReadingResponse } from '../../application/dtos/response/reading.response';
-import { Reading } from '../../domain/entities/Reading';
+import { ReadingModel } from '../../domain/schemas/model/reading.model';
 import { ReadingMapper } from '../mappers/reading.mapper';
 import { CreateReadingRequest } from '../../application/dtos/request/create-reading.request';
 import { toZonedTime } from 'date-fns-tz';
@@ -133,7 +133,7 @@ export class ReadingUseCaseService implements InterfaceReadingUseCase {
         });
       }
 
-      const toUpdate: Reading =
+      const toUpdate: ReadingModel =
         ReadingMapper.fromUpdateReadingRequestToReadingModel(readinRequest);
       // Reading is immutable, so we create a new instance or clone with updated value if needed.
       // Since toUpdate is created fresh from mapper, we can just pass the value to mapper or constructor.
@@ -144,7 +144,7 @@ export class ReadingUseCaseService implements InterfaceReadingUseCase {
 
       // FIX: The original code called setReadingValue(totalAmount).
       // We need to create a new Reading with this value.
-      const updatedReading = new Reading(
+      const updatedReading = new ReadingModel(
         toUpdate.id,
         toUpdate.connectionId,
         toUpdate.readingDate,
@@ -163,7 +163,7 @@ export class ReadingUseCaseService implements InterfaceReadingUseCase {
         toUpdate.currentMonthReading,
       );
 
-      const updatedReadingEntity: Reading | null =
+      const updatedReadingEntity: ReadingModel | null =
         await this.readingRepository.updateCurrentReading(
           readingId,
           updatedReading,
@@ -182,11 +182,9 @@ export class ReadingUseCaseService implements InterfaceReadingUseCase {
         // Initialize other required fields to avoid validation errors if necessary
         // Assuming strict validation mentioned in createReading (lines 214+) might not apply here if we skip validation
         // or if we rely on default values in mapper.
-        // However, we are calling readingRepository.createReading(modelToCreate) directly,
-        // passing a Reading Entity.
-        // The repository createReading method shouldn't validate DTO fields, but DB constraints apply.
+        // However, the repository createReading method shouldn't validate DTO fields, but DB constraints apply.
 
-        const modelToCreate: Reading =
+        const modelToCreate: ReadingModel =
           ReadingMapper.fromCreateReadingRequestToReadingModel(createRequest);
 
         const createdEntity =
@@ -198,7 +196,7 @@ export class ReadingUseCaseService implements InterfaceReadingUseCase {
             message: `Error creating new reading record!`,
           });
         }
-        return ReadingMapper.fromReadingEntityToReadingResponse(
+        return ReadingMapper.fromReadingModelToReadingResponse(
           updatedReadingEntity,
         );
       } else {
@@ -304,9 +302,9 @@ export class ReadingUseCaseService implements InterfaceReadingUseCase {
       readingRequest.typeNoveltyReadingId = consumoActual.id;
       readingRequest.novelty = consumoActual.title;
 
-      const paraCrear: Reading =
+      const paraCrear: ReadingModel =
         ReadingMapper.fromCreateReadingRequestToReadingModel(readingRequest);
-      const creadoEntity: Reading | null =
+      const creadoEntity: ReadingModel | null =
         await this.readingRepository.createReading(paraCrear);
 
       if (creadoEntity === null) {
@@ -316,7 +314,7 @@ export class ReadingUseCaseService implements InterfaceReadingUseCase {
         });
       }
       const creado: ReadingResponse =
-        ReadingMapper.fromReadingEntityToReadingResponse(creadoEntity);
+        ReadingMapper.fromReadingModelToReadingResponse(creadoEntity);
 
       // Registrar observación si la novedad ingresada no coincide
       if (

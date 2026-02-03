@@ -4,7 +4,7 @@ import {
   ReadingBasicInfoResponse,
   ReadingInfoResponse,
 } from '../../../../application/dtos/response/reading-basic.response';
-import { Reading } from '../../../../domain/entities/Reading';
+import { ReadingModel } from '../../../../domain/schemas/model/reading.model';
 import { ReadingResponse } from '../../../../application/dtos/response/reading.response';
 import {
   AdvancedReportReadingsSQLResult,
@@ -62,10 +62,10 @@ export class ReadingPostgreSQLAdapter {
     return response;
   }
 
-  static fromReadingSQLResultToReadingEntity(
+  static fromReadingSQLResultToReadingModel(
     readingResultSQL: ReadingSQLResult,
-  ): Reading {
-    return new Reading(
+  ): ReadingModel {
+    return new ReadingModel(
       readingResultSQL.reading_id,
       readingResultSQL.connection_id,
       readingResultSQL.reading_date ?? new Date(), // Handle null if strictly required, or update Entity to accept null
