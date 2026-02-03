@@ -22,6 +22,7 @@ import { FindCurrentReadingParams } from '../../domain/schemas/dto/request/find-
 import { UpdateReadingLegacyRequest } from '../../domain/schemas/dto/request/update.reading.request';
 import { AuthGuard } from '../../../../../../auth/guard/auth.guard';
 import { ReadingResponse } from '../../domain/schemas/dto/response/readings.response';
+import { CalculateReadingValueParams } from '../../domain/schemas/dto/request/calculate-reading-value-params';
 
 @Controller('readings')
 @ApiTags('Readings - Legacy')
@@ -159,18 +160,23 @@ export class ReadingLegacyGatewayController implements OnModuleInit {
     }
   }
 
-  @Get('calculate-reading-value')
+  @Get('calculate-reading-value/:cadastralKey/:consumptionM3')
   @ApiOperation({
     summary: 'Method GET - Calculate Reading Value (Legacy)',
   })
   async calculateReadingValue(
     @Req() request: Request,
-    @Query() params: { cadastralKey: string; consumptionM3: number },
+    @Query() parameters: CalculateReadingValueParams,
   ): Promise<ApiResponse> {
     try {
       this.logger.log(
-        `Sending calculateReadingValue request: ${JSON.stringify(params)}`,
+        `Sending calculateReadingValue request: ${JSON.stringify(parameters)}`,
       );
+
+      const params = {
+        cadastralKey: parameters.cadastralKey,
+        consumptionM3: parameters.consumptionM3,
+      };
 
       const response: number = await sendKafkaRequest(
         this.readingClient.send(
