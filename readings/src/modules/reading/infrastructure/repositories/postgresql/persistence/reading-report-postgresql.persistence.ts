@@ -87,9 +87,11 @@ export class ReadingReportPostgreSQLPersistence implements InterfaceReadingRepor
         l.novedad as "novelty",
         l.lectura_anterior as "previewReading",
         l.lectura_actual as "currentReading",
-        c.cliente_id as "clientId"
+        c.cliente_id as "clientId",
+        cp.average_consumption as "averageConsumption"
       FROM lectura l
       INNER JOIN acometida ac ON l.acometida_id = ac.acometida_id
+      INNER JOIN consumo_promedio cp ON ac.acometida_id = cp.acometida_id
       LEFT JOIN cliente c ON ac.cliente_id = c.cliente_id
       LEFT JOIN ciudadano ci ON ci.ciudadano_id = c.cliente_id
       LEFT JOIN empresa e ON e.ruc = c.cliente_id
@@ -123,9 +125,11 @@ export class ReadingReportPostgreSQLPersistence implements InterfaceReadingRepor
         l.novedad as "novelty",
         l.lectura_anterior as "previewReading",
         l.lectura_actual as "currentReading",
-        c.cliente_id as "clientId"
+        c.cliente_id as "clientId",
+        cp.average_consumption as "averageConsumption"
       FROM lectura l
       INNER JOIN acometida ac ON l.acometida_id = ac.acometida_id
+          inner join public.consumo_promedio cp on ac.acometida_id = cp.acometida_id
       LEFT JOIN cliente c ON ac.cliente_id = c.cliente_id
       LEFT JOIN ciudadano ci ON ci.ciudadano_id = c.cliente_id
       LEFT JOIN empresa e ON e.ruc = c.cliente_id
@@ -241,7 +245,9 @@ export class ReadingReportPostgreSQLPersistence implements InterfaceReadingRepor
         COUNT(DISTINCT acometida_id) AS "uniqueConnections",
         COUNT(DISTINCT clave_catastral) AS "uniqueCadastralKeys",
         COUNT(valor_lectura) AS "countNonNullReadingValue",
-        COUNT(tasa_alcantarillado) AS "countNonNullSewerRate"
+        COUNT(tasa_alcantarillado) AS "countNonNullSewerRate",
+        -- Contar Total de acometidas de la tabla acometida
+        (SELECT COUNT(a.acometida_id) FROM acometida a where a.estado is true) AS "totalConnections"
     FROM lectura
     WHERE mes_lectura = $1;
     `;
@@ -268,6 +274,7 @@ export class ReadingReportPostgreSQLPersistence implements InterfaceReadingRepor
       uniqueCadastralKeys: Number(row.uniqueCadastralKeys),
       countNonNullReadingValue: Number(row.countNonNullReadingValue),
       countNonNullSewerRate: Number(row.countNonNullSewerRate),
+      totalConnections: Number(row.totalConnections),
     };
   }
 

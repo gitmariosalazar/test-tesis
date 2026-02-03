@@ -12,6 +12,7 @@ export interface ConnectionLastReadingsReport {
   previewReading?: number;
   currentReading?: number;
   clientId?: number;
+  averageConsumption: number;
 }
 
 export interface DailyReadingsReport {
@@ -26,6 +27,7 @@ export interface DailyReadingsReport {
   previewReading?: number;
   currentReading?: number;
   clientId?: number;
+  averageConsumption: number;
 }
 
 export interface MonthlySummary {
@@ -66,6 +68,7 @@ export interface GlobalStatsReport {
   uniqueCadastralKeys: number;
   countNonNullReadingValue: number;
   countNonNullSewerRate: number;
+  totalConnections: number;
 }
 
 export interface DailyStatsReport {
