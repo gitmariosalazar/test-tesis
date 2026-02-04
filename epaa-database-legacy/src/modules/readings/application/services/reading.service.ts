@@ -5,12 +5,12 @@ import { ReadingResponse } from '../../domain/schemas/dto/response/readings.resp
 import { InterfaceReadingsRepository } from '../../domain/contracts/readings.interface.repository';
 import { ReadingModel } from '../../domain/schemas/model/sqlserver/reading.model';
 import { ReadingMapper } from '../mappers/readings.mapper';
-import { RpcException } from '@nestjs/microservices/exceptions/rpc-exception';
 import { validateFields } from '../../../../shared/validators/fields.validators';
 import { statusCode } from '../../../../settings/environments/status-code';
 import { MONTHS } from '../../../../shared/consts/months';
 import { FindCurrentReadingParams } from '../../domain/schemas/dto/request/find-current-reading.paramss';
 import { UpdateReadingRequest } from '../../domain/schemas/dto/request/update.reading.request';
+import { ReadingNotFoundException } from '../../domain/exceptions/reading-not-found.exception';
 
 @Injectable()
 export class ReadingService implements InterfaceReadingUseCase {
@@ -33,10 +33,7 @@ export class ReadingService implements InterfaceReadingUseCase {
         requiredFields,
       );
       if (missingFieldsMessages.length > 0) {
-        throw new RpcException({
-          statusCode: statusCode.BAD_REQUEST,
-          message: missingFieldsMessages,
-        });
+        throw new Error(JSON.stringify(missingFieldsMessages));
       }
 
       const now: Date = new Date();
@@ -85,10 +82,7 @@ export class ReadingService implements InterfaceReadingUseCase {
         validateParameters,
       );
       if (missingParametersMessages.length > 0) {
-        throw new RpcException({
-          statusCode: statusCode.BAD_REQUEST,
-          message: missingParametersMessages,
-        });
+        throw new Error(JSON.stringify(missingParametersMessages));
       }
 
       const result = await this.readingsRepository.findCurrentReading(params);
@@ -120,10 +114,7 @@ export class ReadingService implements InterfaceReadingUseCase {
         requiredFieldsToUpdate,
       );
       if (missingFieldsMessages.length > 0) {
-        throw new RpcException({
-          statusCode: statusCode.BAD_REQUEST,
-          message: missingFieldsMessages,
-        });
+        throw new Error(JSON.stringify(missingFieldsMessages));
       }
 
       const requiredParamsToFind: string[] = [
@@ -139,20 +130,14 @@ export class ReadingService implements InterfaceReadingUseCase {
         requiredParamsToFind,
       );
       if (missingParamsMessages.length > 0) {
-        throw new RpcException({
-          statusCode: statusCode.BAD_REQUEST,
-          message: missingParamsMessages,
-        });
+        throw new Error(JSON.stringify(missingParamsMessages));
       }
 
       const existingReading =
         await this.readingsRepository.findCurrentReading(params);
 
       if (!existingReading) {
-        throw new RpcException({
-          statusCode: statusCode.NOT_FOUND,
-          message: 'Reading to update not found',
-        });
+        throw new ReadingNotFoundException('Reading to update not found');
       }
 
       if (
@@ -166,10 +151,9 @@ export class ReadingService implements InterfaceReadingUseCase {
           existingReading.readingTime,
           existingReading.currentReading,
         );
-        throw new RpcException({
-          statusCode: statusCode.CONFLICT,
-          message: 'Reading has already been recorded and cannot be updated',
-        });
+        throw new Error(
+          'Reading has already been recorded and cannot be updated',
+        );
       }
 
       const updatedReadingModel: ReadingModel =
@@ -183,10 +167,7 @@ export class ReadingService implements InterfaceReadingUseCase {
       console.log(updatedReading);
 
       if (!updatedReading) {
-        throw new RpcException({
-          statusCode: statusCode.INTERNAL_SERVER_ERROR,
-          message: 'Failed to update the reading',
-        });
+        throw new Error('Failed to update the reading');
       }
 
       return updatedReading;

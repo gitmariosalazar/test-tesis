@@ -4,6 +4,7 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CreateReadingLegacyRequest } from '../../domain/schemas/dto/request/create.reading.request';
 import { FindCurrentReadingParams } from '../../domain/schemas/dto/request/find-current-reading.paramss';
 import { UpdateReadingRequest } from '../../domain/schemas/dto/request/update.reading.request';
+import { ReadingNotFoundException } from '../../domain/exceptions/reading-not-found.exception';
 
 @Controller('readings')
 export class ReadingController {
@@ -37,17 +38,35 @@ export class ReadingController {
 
   @Put('update-current-reading')
   @MessagePattern('epaa-legacy.reading.update-current-reading')
-  updateCurrentReading(
+  async updateCurrentReading(
     @Payload()
     data: {
       params: FindCurrentReadingParams;
       request: UpdateReadingRequest;
     },
   ) {
-    console.log(
-      `Received updateCurrentReading request: ${JSON.stringify(data)}`,
-    );
-    return this.readingService.updateCurrentReading(data.params, data.request);
+    try {
+      console.log(
+        `Received updateCurrentReading request: ${JSON.stringify(data)}`,
+      );
+      return await this.readingService.updateCurrentReading(
+        data.params,
+        data.request,
+      );
+    } catch (error) {
+      if (error instanceof ReadingNotFoundException) {
+        console.warn(`Reading not found: ${error.message}`);
+        return {
+          statusCode: 404,
+          message: error.message,
+        };
+      }
+      console.error(`Error updating reading: ${error.message}`);
+      return {
+        statusCode: 500,
+        message: error.message || 'Internal server error',
+      };
+    }
   }
 
   @Get('calculate-reading-value')
