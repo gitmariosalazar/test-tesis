@@ -38,6 +38,11 @@ async function bootstrap() {
     },
   );
 
+  await app.listen(environments.NODE_ENV === 'production' ? 3014 : 4014);
+  logger.log(
+    `🚀🎉 The Security microservice is running on: http://localhost:${environments.NODE_ENV === 'production' ? 3014 : 4014}✅`,
+  );
+
   await kafkaApp.listen();
   logger.log(`Nest application successfully started`);
 }
