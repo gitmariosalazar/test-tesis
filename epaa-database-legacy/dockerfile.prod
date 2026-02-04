@@ -57,7 +57,7 @@ COPY . .
 # Compilar la aplicación
 RUN npm run build
 # Limpiar devDependencies
-RUN npm prune --production
+#RUN npm prune --production
 
 # --------------------------------------------
 # Production Stage - Imagen final
