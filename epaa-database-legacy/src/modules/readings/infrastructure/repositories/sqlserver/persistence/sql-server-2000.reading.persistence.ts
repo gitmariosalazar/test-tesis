@@ -141,22 +141,7 @@ export class ReadingSQLServer2000Persistence implements InterfaceReadingsReposit
       this.validateReading(reading);
       return await this.sqlServerService.transaction<ReadingResponse>(
         async (conn) => {
-          const insertQuery = `
-  EXEC spInsertLectura 
-          @Sector = ${Number(reading.getSector())},
-          @Cuenta = ${Number(reading.getAccount())},
-          @Anio = '${String(reading.getYear())}',
-          @Mes = '${String(reading.getMonth())}',
-          @LecturaAnterior = ${Number(reading.getPreviousReading())},
-          @LecturaActual = ${Number(reading.getCurrentReading())},
-          @Novedad = '${String(reading.getNovelty())}',
-          @ValorAPagar = ${reading.getReadingValue() != null ? parseFloat(reading.getReadingValue()!.toFixed(8)) : null},
-          @TasaAlcantarillado = ${reading.getSewerRate() != null ? parseFloat(reading.getSewerRate()?.toFixed(8)!) : null},
-          @Reconexion = ${reading.getReconnection() != null ? parseFloat(reading.getReconnection()?.toFixed(8)!) : null},
-          @FechaCaptura = '${formatDateForSQLServer(reading.getReadingDate())}',
-          @HoraCaptura = '${String(reading.getReadingTime())}',
-          @ClaveCatastral = '${String(reading.getCadastralKey())}'
-`;
+          const insertQuery = `EXEC spInsertLectura @Sector = ${Number(reading.getSector())}, @Cuenta = ${Number(reading.getAccount())}, @Anio = '${String(reading.getYear())}', @Mes = '${String(reading.getMonth())}', @LecturaAnterior = ${Number(reading.getPreviousReading())}, @LecturaActual = ${Number(reading.getCurrentReading())}, @Novedad = '${String(reading.getNovelty())}', @ValorAPagar = ${reading.getReadingValue() != null ? parseFloat(reading.getReadingValue()!.toFixed(8)) : 'NULL'}, @TasaAlcantarillado = ${reading.getSewerRate() != null ? parseFloat(reading.getSewerRate()?.toFixed(8)!) : 'NULL'}, @Reconexion = ${reading.getReconnection() != null ? parseFloat(reading.getReconnection()?.toFixed(8)!) : 'NULL'}, @FechaCaptura = '${formatDateForSQLServer(reading.getReadingDate())}', @HoraCaptura = '${String(reading.getReadingTime())}', @ClaveCatastral = '${String(reading.getCadastralKey())}'`;
 
           lastQuery = insertQuery;
           console.log('Executing Insert Query:', insertQuery);
