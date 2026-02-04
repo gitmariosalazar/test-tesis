@@ -9,7 +9,7 @@ services:
     ports:
       - '${GATEWAY_SERVER_PORT_PRODUCTION:-3005}:${GATEWAY_SERVER_PORT_PRODUCTION:-3005}'
     env_file:
-      - ./client-gateway/.env
+      - ./client-gateway/.env.production
       - .env
     networks:
       - epaa-network
@@ -96,7 +96,7 @@ services:
     ports:
       - '${READINGS_SERVER_PORT_PRODUCTION:-3007}:${READINGS_SERVER_PORT_PRODUCTION:-3007}'
     env_file:
-      - ./readings/.env
+      - ./readings/.env.production
       - .env
     networks:
       - epaa-network
@@ -136,7 +136,7 @@ services:
     ports:
       - '${EPAA_DATABASE_LEGACY_SERVER_PORT_PRODUCTION:-3009}:${EPAA_DATABASE_LEGACY_SERVER_PORT_PRODUCTION:-3009}'
     env_file:
-      - ./epaa-database-legacy/.env
+      - ./epaa-database-legacy/.env.production
       - .env
     networks:
       - epaa-network
@@ -296,7 +296,7 @@ services:
     ports:
       - '${CONNECTION_SERVER_PORT_PRODUCTION:-3013}:${CONNECTION_SERVER_PORT_PRODUCTION:-3013}'
     env_file:
-      - ./connection/.env
+      - ./connection/.env.production
       - .env
     networks:
       - epaa-network

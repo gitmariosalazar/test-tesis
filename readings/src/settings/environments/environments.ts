@@ -1,5 +1,12 @@
-import 'dotenv/config';
+import * as dotenv from 'dotenv';
 import * as Joi from 'joi';
+
+dotenv.config({
+  path:
+    process.env.NODE_ENV === 'production'
+      ? '.env.production'
+      : '.env.development',
+});
 
 interface EnvironmentsVariables {
   NODE_ENV: 'development' | 'production' | 'test' | 'provision';
@@ -75,7 +82,8 @@ export const environments: EnvironmentsVariables = {
   DEBUG: envVars.DEBUG === true,
   ALLOWED_HOSTS: envVars.ALLOWED_HOSTS,
   SECRET_KEY: envVars.SECRET_KEY,
-  KAFKA_BROKER_URL: envVars.KAFKA_BROKER_INTERNAL || envVars.KAFKA_BROKER_EXTERNAL,
+  KAFKA_BROKER_URL:
+    envVars.KAFKA_BROKER_INTERNAL || envVars.KAFKA_BROKER_EXTERNAL,
   KAFKA_TOPIC: envVars.KAFKA_TOPIC,
   READINGS_KAFKA_CLIENT_ID: envVars.READINGS_KAFKA_CLIENT_ID,
   READINGS_KAFKA_GROUP_ID: envVars.READINGS_KAFKA_GROUP_ID,
@@ -89,6 +97,8 @@ export const environments: EnvironmentsVariables = {
   PHOTO_READING_KAFKA_CLIENT: envVars.PHOTO_READING_KAFKA_CLIENT,
   PHOTO_READING_KAFKA_CLIENT_ID: envVars.PHOTO_READING_KAFKA_CLIENT_ID,
   LOCATION_CONNECTION_KAFKA_CLIENT: envVars.LOCATION_CONNECTION_KAFKA_CLIENT,
-  LOCATION_CONNECTION_KAFKA_CLIENT_ID: envVars.LOCATION_CONNECTION_KAFKA_CLIENT_ID,
-  LOCATION_CONNECTION_KAFKA_GROUP_ID: envVars.LOCATION_CONNECTION_KAFKA_GROUP_ID,
+  LOCATION_CONNECTION_KAFKA_CLIENT_ID:
+    envVars.LOCATION_CONNECTION_KAFKA_CLIENT_ID,
+  LOCATION_CONNECTION_KAFKA_GROUP_ID:
+    envVars.LOCATION_CONNECTION_KAFKA_GROUP_ID,
 };

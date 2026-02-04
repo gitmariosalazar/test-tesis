@@ -1,5 +1,12 @@
-import 'dotenv/config';
+import * as dotenv from 'dotenv';
 import * as Joi from 'joi';
+
+dotenv.config({
+  path:
+    process.env.NODE_ENV === 'production'
+      ? '.env.production'
+      : '.env.development',
+});
 
 interface EnvironmentVariables {
   NODE_ENV: 'development' | 'production' | 'test' | 'provision';
