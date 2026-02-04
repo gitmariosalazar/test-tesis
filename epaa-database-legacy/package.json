@@ -37,7 +37,8 @@
     "rxjs": "^7.8.2",
     "tedious": "^6.7.1",
     "uuid": "^13.0.0",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "dotenv": "^17.2.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
@@ -52,7 +53,6 @@
     "@types/node": "^24.3.1",
     "@types/supertest": "^6.0.3",
     "cross-env": "^10.1.0",
-    "dotenv": "^17.2.3",
     "eslint": "^9.35.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
