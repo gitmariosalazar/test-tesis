@@ -143,19 +143,19 @@ export class ReadingSQLServer2000Persistence implements InterfaceReadingsReposit
         async (conn) => {
           const insertQuery = `
   EXEC spInsertLectura 
-          ${Number(reading.getSector())},
-          ${Number(reading.getAccount())},
-          '${String(reading.getYear())}',
-          '${String(reading.getMonth())}',
-          ${Number(reading.getPreviousReading())},
-          ${Number(reading.getCurrentReading())},
-          '${String(reading.getNovelty())}',
-          ${reading.getReadingValue() != null ? parseFloat(reading.getReadingValue()!.toFixed(8)) : null},
-          ${reading.getSewerRate() != null ? parseFloat(reading.getSewerRate()?.toFixed(8)!) : null},
-          ${reading.getReconnection() != null ? parseFloat(reading.getReconnection()?.toFixed(8)!) : null},
-          '${formatDateForSQLServer(reading.getReadingDate())}',
-          '${String(reading.getReadingTime())}',
-          '${String(reading.getCadastralKey())}'
+          @Sector = ${Number(reading.getSector())},
+          @Cuenta = ${Number(reading.getAccount())},
+          @Anio = '${String(reading.getYear())}',
+          @Mes = '${String(reading.getMonth())}',
+          @LecturaAnterior = ${Number(reading.getPreviousReading())},
+          @LecturaActual = ${Number(reading.getCurrentReading())},
+          @Novedad = '${String(reading.getNovelty())}',
+          @ValorAPagar = ${reading.getReadingValue() != null ? parseFloat(reading.getReadingValue()!.toFixed(8)) : null},
+          @TasaAlcantarillado = ${reading.getSewerRate() != null ? parseFloat(reading.getSewerRate()?.toFixed(8)!) : null},
+          @Reconexion = ${reading.getReconnection() != null ? parseFloat(reading.getReconnection()?.toFixed(8)!) : null},
+          @FechaCaptura = '${formatDateForSQLServer(reading.getReadingDate())}',
+          @HoraCaptura = '${String(reading.getReadingTime())}',
+          @ClaveCatastral = '${String(reading.getCadastralKey())}'
 `;
           const inserted = await conn.query(insertQuery);
 
@@ -167,7 +167,7 @@ export class ReadingSQLServer2000Persistence implements InterfaceReadingsReposit
             Mes AS month,
             LecturaAnterior AS previousReading,
             LecturaActual AS currentReading,
-            CodigoIngresoARentas AS rentalIncomeCode,
+            -- CodigoIngresoARentas AS rentalIncomeCode,
             Novedad AS novelty,
             ValorAPagar AS readingValue,
             TasaAlcantarillado AS sewerRate,
