@@ -27,10 +27,10 @@ export class ReadingModel {
     readingValue: number | null,
     sewerRate: number | null,
     reconnection: number | null,
-    incomeCode: number | null,
     readingDate: Date,
     readingTime: string,
     cadastralKey: string,
+    incomeCode: number | null = null,
   ) {
     this.sector = sector;
     this.account = account;
