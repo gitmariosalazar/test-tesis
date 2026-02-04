@@ -141,12 +141,37 @@ export class ReadingSQLServer2000Persistence implements InterfaceReadingsReposit
       this.validateReading(reading);
       return await this.sqlServerService.transaction<ReadingResponse>(
         async (conn) => {
-          const insertQuery = `INSERT INTO AP_LECTURAS (Sector, Cuenta, Anio, Mes, LecturaAnterior, LecturaActual, CodigoIngresoARentas, Novedad, ValorAPagar, TasaAlcantarillado, Reconexion, FechaCaptura, HoraCaptura, ClaveCatastral) VALUES (${Number(reading.getSector())}, ${Number(reading.getAccount())}, '${String(reading.getYear())}', '${String(reading.getMonth())}', ${Number(reading.getPreviousReading())}, ${Number(reading.getCurrentReading())}, ${reading.getRentalIncomeCode() != null ? Number(reading.getRentalIncomeCode()) : 'NULL'}, '${String(reading.getNovelty())}', ${reading.getReadingValue() != null ? parseFloat(reading.getReadingValue()!.toFixed(8)) : 'NULL'}, ${reading.getSewerRate() != null ? parseFloat(reading.getSewerRate()?.toFixed(8)!) : 'NULL'}, ${reading.getReconnection() != null ? parseFloat(reading.getReconnection()?.toFixed(8)!) : 'NULL'}, '${formatDateForSQLServer(reading.getReadingDate())}', '${String(reading.getReadingTime())}', '${String(reading.getCadastralKey())}')`;
+          const insertQuery = `INSERT INTO AP_LECTURAS (Sector, Cuenta, Anio, Mes, LecturaAnterior, LecturaActual, CodigoIngresoARentas, Novedad, ValorAPagar, TasaAlcantarillado, Reconexion, FechaCaptura, HoraCaptura, ClaveCatastral) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-          lastQuery = insertQuery;
-          console.log('Executing Insert Query:', insertQuery);
+          const params = [
+            Number(reading.getSector()),
+            Number(reading.getAccount()),
+            String(reading.getYear()),
+            String(reading.getMonth()),
+            Number(reading.getPreviousReading()),
+            Number(reading.getCurrentReading()),
+            reading.getRentalIncomeCode() != null
+              ? Number(reading.getRentalIncomeCode())
+              : null,
+            String(reading.getNovelty()),
+            reading.getReadingValue() != null
+              ? parseFloat(reading.getReadingValue()!.toFixed(8))
+              : null,
+            reading.getSewerRate() != null
+              ? parseFloat(reading.getSewerRate()?.toFixed(8)!)
+              : null,
+            reading.getReconnection() != null
+              ? parseFloat(reading.getReconnection()?.toFixed(8)!)
+              : null,
+            formatDateForSQLServer(reading.getReadingDate()),
+            String(reading.getReadingTime()),
+            String(reading.getCadastralKey()),
+          ];
 
-          const inserted = await conn.query(insertQuery);
+          lastQuery = `${insertQuery} -- Params: ${JSON.stringify(params)}`;
+          console.log('Executing Insert Query:', lastQuery);
+
+          const inserted = await conn.query(insertQuery, params as any);
 
           const selectQuery = `
           SELECT TOP 1
