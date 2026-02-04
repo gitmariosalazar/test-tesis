@@ -157,6 +157,10 @@ export class ReadingSQLServer2000Persistence implements InterfaceReadingsReposit
           @HoraCaptura = '${String(reading.getReadingTime())}',
           @ClaveCatastral = '${String(reading.getCadastralKey())}'
 `;
+
+          lastQuery = insertQuery;
+          console.log('Executing Insert Query:', insertQuery);
+
           const inserted = await conn.query(insertQuery);
 
           const selectQuery = `
