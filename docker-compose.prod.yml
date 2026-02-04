@@ -44,48 +44,6 @@ services:
       - /home/sigepaa/sigepaa/images/qrcodes:/home/sigepaa/sigepaa/images/qrcodes
       - /home/sigepaa/sigepaa/images/work_orders:/home/sigepaa/sigepaa/images/work_orders
 
-  qrcode-service:
-    image: qrcode-service:production
-    build:
-      context: ./qrcode
-      dockerfile: dockerfile.prod
-    restart: unless-stopped
-    container_name: qrcode-service
-    ports:
-      - '${QR_CODE_SERVER_PORT_PRODUCTION:-3006}:${QR_CODE_SERVER_PORT_PRODUCTION:-3006}'
-    env_file:
-      - ./qrcode/.env
-      - .env
-    networks:
-      - epaa-network
-    healthcheck:
-      test:
-        [
-          'CMD',
-          'curl',
-          '-f',
-          'http://localhost:${QR_CODE_SERVER_PORT_PRODUCTION:-3006}/health'
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
-    volumes:
-      - /home/sigepaa/sigepaa/images/qrcodes:/home/sigepaa/sigepaa/images/qrcodes
-
   readings-service:
     image: readings-service:production
     build:
