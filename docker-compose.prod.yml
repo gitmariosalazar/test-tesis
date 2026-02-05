@@ -172,7 +172,7 @@ services:
     restart: unless-stopped
     container_name: security-service
     ports:
-      - '${SECURITY_SERVER_PORT_PRODUCTION:-3014}:${SECURITY_SERVER_PORT_PRODUCTION:-3014}'
+      - '${SECURITY_SERVER_PORT_PRODUCTION:-3004}:${SECURITY_SERVER_PORT_PRODUCTION:-3004}'
     env_file:
       - ./security/.env.production
       - .env
@@ -184,7 +184,7 @@ services:
           'CMD',
           'curl',
           '-f',
-          'http://localhost:${SECURITY_SERVER_PORT_PRODUCTION:-3014}/health'
+          'http://localhost:${SECURITY_SERVER_PORT_PRODUCTION:-3004}/health'
         ]
       interval: 30s
       timeout: 10s
