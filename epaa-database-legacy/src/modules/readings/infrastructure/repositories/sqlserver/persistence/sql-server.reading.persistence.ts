@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { SQLServerReadingAdapter } from '../adapters/sql-server.reading.adapter';
 import {
+  PendingReadingSQLResult,
   RangoTarifaSQLResult,
   ReadingSQLResult,
   TarifaSQLResult,
 } from '../../../interfaces/reading.sql.response';
 import { InterfaceReadingsRepository } from '../../../../domain/contracts/readings.interface.repository';
 import { DatabaseServiceSQLServer2022 } from '../../../../../../shared/connections/database/sqlserver/sqlserver-2022.service';
-import { ReadingResponse } from '../../../../domain/schemas/dto/response/readings.response';
+import {
+  PendingReadingResponse,
+  ReadingResponse,
+} from '../../../../domain/schemas/dto/response/readings.response';
 import { ReadingModel } from '../../../../domain/schemas/model/sqlserver/reading.model';
 import { FindCurrentReadingParams } from '../../../../domain/schemas/dto/request/find-current-reading.paramss';
 import { RpcException } from '@nestjs/microservices';
@@ -319,6 +323,172 @@ export class ReadingSQLServer2022Persistence implements InterfaceReadingsReposit
     } catch (error) {
       console.error('Error al calcular ValorPagarConsumo:', error);
       throw error; // o retornar 0 según tu política
+    }
+  }
+
+  async findPendingReadingsByCardId(
+    cardId: string,
+  ): Promise<PendingReadingResponse[]> {
+    try {
+      const query = `
+        SELECT 
+            c.CED_IDENT_CIUDADANO AS card_id,
+            c.NOMBRES_CIUDADANO AS name,
+            c.APELLIDOS_CIUDADANO AS last_name ,
+            di.ClaveCatastral AS cadastral_key,
+            di.Direccion AS address,
+            a.Tarifa AS rate,
+            l.Mes AS month,
+            l.Anio AS year,
+            l.LecturaActual AS current_reading,
+            l.LecturaAnterior AS previous_reading,
+            CASE WHEN l.LecturaActual IS NOT NULL 
+                THEN (l.LecturaActual - l.LecturaAnterior) 
+                ELSE NULL 
+            END AS consumption,
+            CASE MONTH(di.Fecha_Venc_Interes)
+                WHEN 1 THEN 'ENERO' WHEN 2 THEN 'FEBRERO' WHEN 3 THEN 'MARZO'
+                WHEN 4 THEN 'ABRIL' WHEN 5 THEN 'MAYO' WHEN 6 THEN 'JUNIO'
+                WHEN 7 THEN 'JULIO' WHEN 8 THEN 'AGOSTO' WHEN 9 THEN 'SEPTIEMBRE'
+                WHEN 10 THEN 'OCTUBRE' WHEN 11 THEN 'NOVIEMBRE' WHEN 12 THEN 'DICIEMBRE'
+            END AS month_due,
+            YEAR(di.Fecha_Venc_Interes) AS year_due,
+            CASE 
+                WHEN l.LecturaActual IS NOT NULL THEN 'Lectura registrada'
+                WHEN l.LecturaActual IS NULL AND di.Fecha_Venc_Interes >= GETDATE() THEN 'Pendiente de lectura (período actual/futuro)'
+                WHEN l.LecturaActual IS NULL AND di.Fecha_Venc_Interes < GETDATE() THEN 'Lectura no registrada o pendiente'
+                ELSE 'No disponible'
+            END AS reading_status,
+            di.Fecha_Pago,
+            di.tasa_basura AS trash_rate,
+            di.Valor_Titulo        AS epaa_value,
+            di.ValorTerceros       AS third_party_value,
+            (COALESCE(di.Valor_Titulo, 0) + COALESCE(di.ValorTerceros, 0) + COALESCE(di.tasa_basura, 0)) AS total,
+            di.Fecha_Venc_Interes AS due_date,
+            di.Estado_Ingreso AS income_status,
+            di.Fecha_Ingreso
+        FROM Datos_ingreso di
+        INNER JOIN CIUDADANO c ON di.CodCliente_Ingreso = c.CED_IDENT_CIUDADANO
+        INNER JOIN AP_ACOMETIDAS a ON a.clave_catastral = di.ClaveCatastral
+        LEFT JOIN AP_LECTURAS l
+            ON l.ClaveCatastral = di.ClaveCatastral
+            AND l.Anio = YEAR(di.Fecha_Venc_Interes)
+            AND UPPER(LTRIM(RTRIM(l.Mes))) = UPPER(CASE MONTH(di.Fecha_Venc_Interes)
+                WHEN 1 THEN 'ENERO' WHEN 2 THEN 'FEBRERO' WHEN 3 THEN 'MARZO'
+                WHEN 4 THEN 'ABRIL' WHEN 5 THEN 'MAYO' WHEN 6 THEN 'JUNIO'
+                WHEN 7 THEN 'JULIO' WHEN 8 THEN 'AGOSTO' WHEN 9 THEN 'SEPTIEMBRE'
+                WHEN 10 THEN 'OCTUBRE' WHEN 11 THEN 'NOVIEMBRE' WHEN 12 THEN 'DICIEMBRE'
+                ELSE NULL
+            END)
+        WHERE di.CodCliente_Ingreso = @cardId
+          AND di.Estado_Ingreso IS NULL
+          AND di.Fecha_Pago IS NULL
+        ORDER BY di.ClaveCatastral, di.Fecha_Ingreso DESC;
+    `;
+
+      const queryParams: any[] = [
+        {
+          name: 'cardId',
+          value: cardId,
+        },
+      ];
+
+      const result = await this.sqlServerService.query<PendingReadingSQLResult>(
+        query,
+        queryParams,
+      );
+
+      const pendingReadings = result.map((reading) =>
+        SQLServerReadingAdapter.toDomainPending(reading),
+      );
+
+      return pendingReadings;
+    } catch (error) {
+      console.error('Error al buscar lecturas pendientes:', error);
+      throw error;
+    }
+  }
+
+  async findPendingReadingsByCadastralKey(
+    cadastralKey: string,
+  ): Promise<PendingReadingResponse[]> {
+    try {
+      const query = `
+        SELECT 
+            c.CED_IDENT_CIUDADANO AS card_id,
+            c.NOMBRES_CIUDADANO AS name,
+            c.APELLIDOS_CIUDADANO AS last_name ,
+            di.ClaveCatastral AS cadastral_key,
+            di.Direccion AS address,
+            a.Tarifa AS rate,
+            l.Mes AS month,
+            l.Anio AS year,
+            l.LecturaActual AS current_reading,
+            l.LecturaAnterior AS previous_reading,
+            CASE WHEN l.LecturaActual IS NOT NULL 
+                THEN (l.LecturaActual - l.LecturaAnterior) 
+                ELSE NULL 
+            END AS consumption,
+            CASE MONTH(di.Fecha_Venc_Interes)
+                WHEN 1 THEN 'ENERO' WHEN 2 THEN 'FEBRERO' WHEN 3 THEN 'MARZO'
+                WHEN 4 THEN 'ABRIL' WHEN 5 THEN 'MAYO' WHEN 6 THEN 'JUNIO'
+                WHEN 7 THEN 'JULIO' WHEN 8 THEN 'AGOSTO' WHEN 9 THEN 'SEPTIEMBRE'
+                WHEN 10 THEN 'OCTUBRE' WHEN 11 THEN 'NOVIEMBRE' WHEN 12 THEN 'DICIEMBRE'
+            END AS month_due,
+            YEAR(di.Fecha_Venc_Interes) AS year_due,
+            CASE 
+                WHEN l.LecturaActual IS NOT NULL THEN 'Lectura registrada'
+                WHEN l.LecturaActual IS NULL AND di.Fecha_Venc_Interes >= GETDATE() THEN 'Pendiente de lectura (período actual/futuro)'
+                WHEN l.LecturaActual IS NULL AND di.Fecha_Venc_Interes < GETDATE() THEN 'Lectura no registrada o pendiente'
+                ELSE 'No disponible'
+            END AS reading_status,
+            di.Fecha_Pago,
+            di.tasa_basura AS trash_rate,
+            di.Valor_Titulo        AS epaa_value,
+            di.ValorTerceros       AS third_party_value,
+            (COALESCE(di.Valor_Titulo, 0) + COALESCE(di.ValorTerceros, 0) + COALESCE(di.tasa_basura, 0)) AS total,
+            di.Fecha_Venc_Interes AS due_date,
+            di.Estado_Ingreso AS income_status,
+            di.Fecha_Ingreso
+        FROM Datos_ingreso di
+        INNER JOIN CIUDADANO c ON di.CodCliente_Ingreso = c.CED_IDENT_CIUDADANO
+        INNER JOIN AP_ACOMETIDAS a ON a.clave_catastral = di.ClaveCatastral
+        LEFT JOIN AP_LECTURAS l
+            ON l.ClaveCatastral = di.ClaveCatastral
+            AND l.Anio = YEAR(di.Fecha_Venc_Interes)
+            AND UPPER(LTRIM(RTRIM(l.Mes))) = UPPER(CASE MONTH(di.Fecha_Venc_Interes)
+                WHEN 1 THEN 'ENERO' WHEN 2 THEN 'FEBRERO' WHEN 3 THEN 'MARZO'
+                WHEN 4 THEN 'ABRIL' WHEN 5 THEN 'MAYO' WHEN 6 THEN 'JUNIO'
+                WHEN 7 THEN 'JULIO' WHEN 8 THEN 'AGOSTO' WHEN 9 THEN 'SEPTIEMBRE'
+                WHEN 10 THEN 'OCTUBRE' WHEN 11 THEN 'NOVIEMBRE' WHEN 12 THEN 'DICIEMBRE'
+                ELSE NULL
+            END)
+        WHERE di.ClaveCatastral = @cadastralKey
+          AND di.Estado_Ingreso IS NULL
+          AND di.Fecha_Pago IS NULL
+        ORDER BY di.ClaveCatastral, di.Fecha_Ingreso DESC;
+    `;
+
+      const queryParams: any[] = [
+        {
+          name: 'cadastralKey',
+          value: cadastralKey,
+        },
+      ];
+
+      const result = await this.sqlServerService.query<PendingReadingSQLResult>(
+        query,
+        queryParams,
+      );
+
+      const pendingReadings = result.map((reading) =>
+        SQLServerReadingAdapter.toDomainPending(reading),
+      );
+
+      return pendingReadings;
+    } catch (error) {
+      console.error('Error al buscar lecturas pendientes:', error);
+      throw error;
     }
   }
 }

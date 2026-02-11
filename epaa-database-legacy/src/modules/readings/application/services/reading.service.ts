@@ -1,7 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InterfaceReadingUseCase } from '../usecases/reading.use-case.interface';
 import { CreateReadingLegacyRequest } from '../../domain/schemas/dto/request/create.reading.request';
-import { ReadingResponse } from '../../domain/schemas/dto/response/readings.response';
+import {
+  PendingReadingResponse,
+  ReadingResponse,
+} from '../../domain/schemas/dto/response/readings.response';
 import { InterfaceReadingsRepository } from '../../domain/contracts/readings.interface.repository';
 import { ReadingModel } from '../../domain/schemas/model/sqlserver/reading.model';
 import { ReadingMapper } from '../mappers/readings.mapper';
@@ -186,6 +189,32 @@ export class ReadingService implements InterfaceReadingUseCase {
         consumptionM3,
       );
       return readingValue;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async findPendingReadingsByCadastralKey(
+    cadastralKey: string,
+  ): Promise<PendingReadingResponse[]> {
+    try {
+      const pendingReadings =
+        await this.readingsRepository.findPendingReadingsByCadastralKey(
+          cadastralKey,
+        );
+      return pendingReadings;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async findPendingReadingsByCardId(
+    cardId: string,
+  ): Promise<PendingReadingResponse[]> {
+    try {
+      const pendingReadings =
+        await this.readingsRepository.findPendingReadingsByCardId(cardId);
+      return pendingReadings;
     } catch (error) {
       throw error;
     }

@@ -15,3 +15,30 @@ export interface ReadingResponse {
   readingTime: string | null;
   cadastralKey: string;
 }
+
+export interface PendingReadingResponse {
+  // Cliente (solo en la primera fila):
+  cardId: string;
+  name: string;
+  lastName: string;
+  // Por cada suministro/planilla:
+  cadastralKey: string;
+  address: string;
+  rate: string;
+  month: string;
+  year: number;
+  consumption: number;
+  previousReading: number;
+  currentReading: number;
+  epaaValue: number;
+  trashRate: number;
+  thirdPartyValue: number;
+  total: number;
+  dueDate: Date;
+  incomeStatus: string;
+  monthDue: string;
+  yearDue: number;
+  readingStatus: string;
+  paymentDate: Date | null;
+  incomeDate: Date;
+}

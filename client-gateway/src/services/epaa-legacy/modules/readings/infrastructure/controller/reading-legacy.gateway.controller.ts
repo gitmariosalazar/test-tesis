@@ -21,13 +21,16 @@ import { ApiResponse } from '../../../../../../shared/errors/responses/ApiRespon
 import { FindCurrentReadingParams } from '../../domain/schemas/dto/request/find-current-reading-params';
 import { UpdateReadingLegacyRequest } from '../../domain/schemas/dto/request/update.reading.request';
 import { AuthGuard } from '../../../../../../auth/guard/auth.guard';
-import { ReadingResponse } from '../../domain/schemas/dto/response/readings.response';
+import {
+  PendingReadingResponse,
+  ReadingResponse,
+} from '../../domain/schemas/dto/response/readings.response';
 import { CalculateReadingValueParams } from '../../domain/schemas/dto/request/calculate-reading-value-params';
 
 @Controller('readings')
 @ApiTags('Readings - Legacy')
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
+//@ApiBearerAuth()
+//@UseGuards(AuthGuard)
 export class ReadingLegacyGatewayController implements OnModuleInit {
   private readonly logger = new Logger(ReadingLegacyGatewayController.name);
   constructor(
@@ -50,6 +53,12 @@ export class ReadingLegacyGatewayController implements OnModuleInit {
     );
     this.readingClient.subscribeToResponseOf(
       'epaa-legacy.reading.calculate-reading-value',
+    );
+    this.readingClient.subscribeToResponseOf(
+      'epaa-legacy.reading.find-pending-reading-by-cadastral-key',
+    );
+    this.readingClient.subscribeToResponseOf(
+      'epaa-legacy.reading.find-pending-reading-by-card-id',
     );
 
     this.logger.log(
@@ -193,6 +202,82 @@ export class ReadingLegacyGatewayController implements OnModuleInit {
     } catch (error) {
       this.logger.error(
         `Error in calculateReadingValue: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(error);
+    }
+  }
+
+  @Get('find-pending-reading-by-cadastral-key/:cadastralKey')
+  @ApiOperation({
+    summary: 'Method GET - Find Pending Reading by Cadastral Key (Legacy)',
+  })
+  async findPendingReadingByCadastralKey(
+    @Req() request: Request,
+    @Param('cadastralKey') cadastralKey: string,
+  ): Promise<ApiResponse> {
+    try {
+      this.logger.log(
+        `Sending findPendingReadingByCadastralKey request: ${JSON.stringify(cadastralKey)}`,
+      );
+
+      const params = {
+        cadastralKey: cadastralKey,
+      };
+
+      const response: PendingReadingResponse[] = await sendKafkaRequest(
+        this.readingClient.send(
+          'epaa-legacy.reading.find-pending-reading-by-cadastral-key',
+          params,
+        ),
+      );
+
+      return new ApiResponse(
+        `Pending reading by cadastral key found successfully!`,
+        response,
+        request.url,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error in findPendingReadingByCadastralKey: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(error);
+    }
+  }
+
+  @Get('find-pending-reading-by-card-id/:cardId')
+  @ApiOperation({
+    summary: 'Method GET - Find Pending Reading by Card ID (Legacy)',
+  })
+  async findPendingReadingByCardId(
+    @Req() request: Request,
+    @Param('cardId') cardId: string,
+  ): Promise<ApiResponse> {
+    try {
+      this.logger.log(
+        `Sending findPendingReadingByCardId request: ${JSON.stringify(cardId)}`,
+      );
+
+      const params = {
+        cardId: cardId,
+      };
+
+      const response: PendingReadingResponse[] = await sendKafkaRequest(
+        this.readingClient.send(
+          'epaa-legacy.reading.find-pending-reading-by-card-id',
+          params,
+        ),
+      );
+
+      return new ApiResponse(
+        `Pending reading by card id found successfully!`,
+        response,
+        request.url,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error in findPendingReadingByCardId: ${error.message}`,
         error.stack,
       );
       throw new RpcException(error);

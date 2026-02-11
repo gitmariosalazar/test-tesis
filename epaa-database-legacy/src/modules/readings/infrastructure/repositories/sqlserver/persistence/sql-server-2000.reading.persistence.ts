@@ -5,11 +5,15 @@ import {
   ReadingSQLResult,
   RangoTarifaSQLResult,
   TarifaSQLResult,
+  PendingReadingSQLResult,
 } from '../../../interfaces/reading.sql.response';
 import { InterfaceReadingsRepository } from '../../../../domain/contracts/readings.interface.repository';
 import { DatabaseServiceSQLServer2000 } from '../../../../../../shared/connections/database/sqlserver/sqlserver-2000.service';
 import { ReadingModel } from '../../../../domain/schemas/model/sqlserver/reading.model';
-import { ReadingResponse } from '../../../../domain/schemas/dto/response/readings.response';
+import {
+  PendingReadingResponse,
+  ReadingResponse,
+} from '../../../../domain/schemas/dto/response/readings.response';
 import { formatDateForSQLServer } from '../../../../../../shared/utils/format-date';
 import { FindCurrentReadingParams } from '../../../../domain/schemas/dto/request/find-current-reading.paramss';
 import { MONTHS, MONTHS_REVERSE } from '../../../../../../shared/consts/months';
@@ -430,6 +434,134 @@ export class ReadingSQLServer2000Persistence implements InterfaceReadingsReposit
       return valorPagar;
     } catch (error) {
       console.error('Error al calcular ValorPagarConsumo:', error);
+      throw error;
+    }
+  }
+
+  async findPendingReadingsByCadastralKey(
+    cadastralKey: string,
+  ): Promise<PendingReadingResponse[]> {
+    try {
+      const query = `
+      SELECT 
+        di.CodCliente_Ingreso AS card_id,
+        c.Nombre AS name,
+        c.Apellido AS last_name,
+        di.ClaveCatastral AS cadastral_key,
+        di.Direccion AS address,
+        di.Tarifa AS rate,
+        CASE 
+            WHEN MONTH(di.Fecha_Ingreso) = 1 THEN 'ENERO' WHEN MONTH(di.Fecha_Ingreso) = 2 THEN 'FEBRERO' WHEN MONTH(di.Fecha_Ingreso) = 3 THEN 'MARZO' WHEN MONTH(di.Fecha_Ingreso) = 4 THEN 'ABRIL' WHEN MONTH(di.Fecha_Ingreso) = 5 THEN 'MAYO' WHEN MONTH(di.Fecha_Ingreso) = 6 THEN 'JUNIO' WHEN MONTH(di.Fecha_Ingreso) = 7 THEN 'JULIO' WHEN MONTH(di.Fecha_Ingreso) = 8 THEN 'AGOSTO' WHEN MONTH(di.Fecha_Ingreso) = 9 THEN 'SEPTIEMBRE' WHEN MONTH(di.Fecha_Ingreso) = 10 THEN 'OCTUBRE' WHEN MONTH(di.Fecha_Ingreso) = 11 THEN 'NOVIEMBRE' WHEN MONTH(di.Fecha_Ingreso) = 12 THEN 'DICIEMBRE'
+            END AS month,
+        YEAR(di.Fecha_Ingreso) AS year,
+        ISNULL(l.LecturaActual, 0) AS consumption,
+        ISNULL(l.LecturaAnterior, 0) AS previous_reading,
+        ISNULL(l.LecturaActual, 0) AS current_reading,
+        ISNULL(l.ValorAPagar, 0) AS epaa_value,
+        ISNULL(l.TasaAlcantarillado, 0) AS trash_rate,
+        ISNULL(l.Terceros, 0) AS third_party_value,
+        ISNULL(l.ValorAPagar, 0) + ISNULL(l.TasaAlcantarillado, 0) + ISNULL(l.Terceros, 0) AS total,
+        di.Fecha_Venc_Interes AS due_date,
+        CASE 
+            WHEN di.Estado_Ingreso = 0 THEN 'PENDIENTE' WHEN di.Estado_Ingreso = 1 THEN 'PAGADO' WHEN di.Estado_Ingreso = 2 THEN 'ANULADO' ELSE 'DESCONOCIDO'
+        END AS income_status,
+        CASE 
+            WHEN MONTH(di.Fecha_Venc_Interes) = 1 THEN 'ENERO' WHEN MONTH(di.Fecha_Venc_Interes) = 2 THEN 'FEBRERO' WHEN MONTH(di.Fecha_Venc_Interes) = 3 THEN 'MARZO' WHEN MONTH(di.Fecha_Venc_Interes) = 4 THEN 'ABRIL' WHEN MONTH(di.Fecha_Venc_Interes) = 5 THEN 'MAYO' WHEN MONTH(di.Fecha_Venc_Interes) = 6 THEN 'JUNIO' WHEN MONTH(di.Fecha_Venc_Interes) = 7 THEN 'JULIO' WHEN MONTH(di.Fecha_Venc_Interes) = 8 THEN 'AGOSTO' WHEN MONTH(di.Fecha_Venc_Interes) = 9 THEN 'SEPTIEMBRE' WHEN MONTH(di.Fecha_Venc_Interes) = 10 THEN 'OCTUBRE' WHEN MONTH(di.Fecha_Venc_Interes) = 11 THEN 'NOVIEMBRE' WHEN MONTH(di.Fecha_Venc_Interes) = 12 THEN 'DICIEMBRE'
+            END AS month_due,
+        YEAR(di.Fecha_Venc_Interes) AS year_due,
+        CASE 
+            WHEN l.LecturaActual IS NOT NULL THEN 'Lectura registrada'
+            WHEN l.LecturaActual IS NULL AND di.Fecha_Venc_Interes >= GETDATE() THEN 'Pendiente de lectura (período actual/futuro)'
+            WHEN l.LecturaActual IS NULL AND di.Fecha_Venc_Interes < GETDATE() THEN 'Pendiente de lectura (período vencido)'
+            ELSE 'Estado desconocido'
+        END AS reading_status,
+        di.Fecha_Pago AS payment_date,
+        di.Fecha_Ingreso AS income_date
+    FROM AP_DETALLE_INGRESOS di
+    LEFT JOIN AP_LECTURAS l 
+        ON l.Sector = di.Sector 
+        AND l.Cuenta = di.Cuenta 
+        AND l.Anio = YEAR(di.Fecha_Ingreso)
+        AND l.Mes = CASE 
+            WHEN MONTH(di.Fecha_Ingreso) = 1 THEN 'ENERO' WHEN MONTH(di.Fecha_Ingreso) = 2 THEN 'FEBRERO' WHEN MONTH(di.Fecha_Ingreso) = 3 THEN 'MARZO' WHEN MONTH(di.Fecha_Ingreso) = 4 THEN 'ABRIL' WHEN MONTH(di.Fecha_Ingreso) = 5 THEN 'MAYO' WHEN MONTH(di.Fecha_Ingreso) = 6 THEN 'JUNIO' WHEN MONTH(di.Fecha_Ingreso) = 7 THEN 'JULIO' WHEN MONTH(di.Fecha_Ingreso) = 8 THEN 'AGOSTO' WHEN MONTH(di.Fecha_Ingreso) = 9 THEN 'SEPTIEMBRE' WHEN MONTH(di.Fecha_Ingreso) = 10 THEN 'OCTUBRE' WHEN MONTH(di.Fecha_Ingreso) = 11 THEN 'NOVIEMBRE' WHEN MONTH(di.Fecha_Ingreso) = 12 THEN 'DICIEMBRE'
+            END
+    LEFT JOIN AP_CLIENTES c 
+        ON c.CodCliente = di.CodCliente_Ingreso
+    WHERE di.ClaveCatastral = @cadastralKey
+      AND di.Estado_Ingreso IS NULL
+      AND di.Fecha_Pago IS NULL
+    ORDER BY di.ClaveCatastral, di.Fecha_Ingreso DESC;
+      `;
+
+      const result =
+        await this.sqlServerService.query<PendingReadingSQLResult>(query);
+      return result.map(SQLServerReadingAdapter.toDomainPending);
+    } catch (error) {
+      console.error('Error al obtener lecturas pendientes:', error);
+      throw error;
+    }
+  }
+
+  async findPendingReadingsByCardId(
+    cardId: string,
+  ): Promise<PendingReadingResponse[]> {
+    try {
+      const query = `
+      SELECT 
+        di.CodCliente_Ingreso AS card_id,
+        c.Nombre AS name,
+        c.Apellido AS last_name,
+        di.ClaveCatastral AS cadastral_key,
+        di.Direccion AS address,
+        di.Tarifa AS rate,
+        CASE 
+            WHEN MONTH(di.Fecha_Ingreso) = 1 THEN 'ENERO' WHEN MONTH(di.Fecha_Ingreso) = 2 THEN 'FEBRERO' WHEN MONTH(di.Fecha_Ingreso) = 3 THEN 'MARZO' WHEN MONTH(di.Fecha_Ingreso) = 4 THEN 'ABRIL' WHEN MONTH(di.Fecha_Ingreso) = 5 THEN 'MAYO' WHEN MONTH(di.Fecha_Ingreso) = 6 THEN 'JUNIO' WHEN MONTH(di.Fecha_Ingreso) = 7 THEN 'JULIO' WHEN MONTH(di.Fecha_Ingreso) = 8 THEN 'AGOSTO' WHEN MONTH(di.Fecha_Ingreso) = 9 THEN 'SEPTIEMBRE' WHEN MONTH(di.Fecha_Ingreso) = 10 THEN 'OCTUBRE' WHEN MONTH(di.Fecha_Ingreso) = 11 THEN 'NOVIEMBRE' WHEN MONTH(di.Fecha_Ingreso) = 12 THEN 'DICIEMBRE'
+            END AS month,
+        YEAR(di.Fecha_Ingreso) AS year,
+        ISNULL(l.LecturaActual, 0) AS consumption,
+        ISNULL(l.LecturaAnterior, 0) AS previous_reading,
+        ISNULL(l.LecturaActual, 0) AS current_reading,
+        ISNULL(l.ValorAPagar, 0) AS epaa_value,
+        ISNULL(l.TasaAlcantarillado, 0) AS trash_rate,
+        ISNULL(l.Terceros, 0) AS third_party_value,
+        ISNULL(l.ValorAPagar, 0) + ISNULL(l.TasaAlcantarillado, 0) + ISNULL(l.Terceros, 0) AS total,
+        di.Fecha_Venc_Interes AS due_date,
+        CASE 
+            WHEN di.Estado_Ingreso = 0 THEN 'PENDIENTE' WHEN di.Estado_Ingreso = 1 THEN 'PAGADO' WHEN di.Estado_Ingreso = 2 THEN 'ANULADO' ELSE 'DESCONOCIDO'
+        END AS income_status,
+        CASE 
+            WHEN MONTH(di.Fecha_Venc_Interes) = 1 THEN 'ENERO' WHEN MONTH(di.Fecha_Venc_Interes) = 2 THEN 'FEBRERO' WHEN MONTH(di.Fecha_Venc_Interes) = 3 THEN 'MARZO' WHEN MONTH(di.Fecha_Venc_Interes) = 4 THEN 'ABRIL' WHEN MONTH(di.Fecha_Venc_Interes) = 5 THEN 'MAYO' WHEN MONTH(di.Fecha_Venc_Interes) = 6 THEN 'JUNIO' WHEN MONTH(di.Fecha_Venc_Interes) = 7 THEN 'JULIO' WHEN MONTH(di.Fecha_Venc_Interes) = 8 THEN 'AGOSTO' WHEN MONTH(di.Fecha_Venc_Interes) = 9 THEN 'SEPTIEMBRE' WHEN MONTH(di.Fecha_Venc_Interes) = 10 THEN 'OCTUBRE' WHEN MONTH(di.Fecha_Venc_Interes) = 11 THEN 'NOVIEMBRE' WHEN MONTH(di.Fecha_Venc_Interes) = 12 THEN 'DICIEMBRE'
+            END AS month_due,
+        YEAR(di.Fecha_Venc_Interes) AS year_due,
+        CASE 
+            WHEN l.LecturaActual IS NOT NULL THEN 'Lectura registrada'
+            WHEN l.LecturaActual IS NULL AND di.Fecha_Venc_Interes >= GETDATE() THEN 'Pendiente de lectura (período actual/futuro)'
+            WHEN l.LecturaActual IS NULL AND di.Fecha_Venc_Interes < GETDATE() THEN 'Pendiente de lectura (período vencido)'
+            ELSE 'Estado desconocido'
+        END AS reading_status,
+        di.Fecha_Pago AS payment_date,
+        di.Fecha_Ingreso AS income_date
+    FROM AP_DETALLE_INGRESOS di
+    LEFT JOIN AP_LECTURAS l 
+        ON l.Sector = di.Sector 
+        AND l.Cuenta = di.Cuenta 
+        AND l.Anio = YEAR(di.Fecha_Ingreso)
+        AND l.Mes = CASE 
+            WHEN MONTH(di.Fecha_Ingreso) = 1 THEN 'ENERO' WHEN MONTH(di.Fecha_Ingreso) = 2 THEN 'FEBRERO' WHEN MONTH(di.Fecha_Ingreso) = 3 THEN 'MARZO' WHEN MONTH(di.Fecha_Ingreso) = 4 THEN 'ABRIL' WHEN MONTH(di.Fecha_Ingreso) = 5 THEN 'MAYO' WHEN MONTH(di.Fecha_Ingreso) = 6 THEN 'JUNIO' WHEN MONTH(di.Fecha_Ingreso) = 7 THEN 'JULIO' WHEN MONTH(di.Fecha_Ingreso) = 8 THEN 'AGOSTO' WHEN MONTH(di.Fecha_Ingreso) = 9 THEN 'SEPTIEMBRE' WHEN MONTH(di.Fecha_Ingreso) = 10 THEN 'OCTUBRE' WHEN MONTH(di.Fecha_Ingreso) = 11 THEN 'NOVIEMBRE' WHEN MONTH(di.Fecha_Ingreso) = 12 THEN 'DICIEMBRE'
+            END
+    LEFT JOIN AP_CLIENTES c 
+        ON c.CodCliente = di.CodCliente_Ingreso
+    WHERE di.CodCliente_Ingreso = @cardId
+      AND di.Estado_Ingreso IS NULL
+      AND di.Fecha_Pago IS NULL
+    ORDER BY di.ClaveCatastral, di.Fecha_Ingreso DESC;
+      `;
+
+      const result =
+        await this.sqlServerService.query<PendingReadingSQLResult>(query);
+      return result.map(SQLServerReadingAdapter.toDomainPending);
+    } catch (error) {
+      console.error('Error al obtener lecturas pendientes:', error);
       throw error;
     }
   }

@@ -86,4 +86,34 @@ export class ReadingController {
       params.consumptionM3,
     );
   }
+
+  @Get('find-pending-reading-by-cadastral-key')
+  @MessagePattern('epaa-legacy.reading.find-pending-reading-by-cadastral-key')
+  findPendingReadingByCadastralKey(
+    @Payload()
+    params: {
+      cadastralKey: string;
+    },
+  ) {
+    console.log(
+      `Received findPendingReadingByCadastralKey request: ${JSON.stringify(params)}`,
+    );
+    return this.readingService.findPendingReadingsByCadastralKey(
+      params.cadastralKey,
+    );
+  }
+
+  @Get('find-pending-reading-by-card-id')
+  @MessagePattern('epaa-legacy.reading.find-pending-reading-by-card-id')
+  findPendingReadingByCardId(
+    @Payload()
+    params: {
+      cardId: string;
+    },
+  ) {
+    console.log(
+      `Received findPendingReadingByCardId request: ${JSON.stringify(params)}`,
+    );
+    return this.readingService.findPendingReadingsByCardId(params.cardId);
+  }
 }
