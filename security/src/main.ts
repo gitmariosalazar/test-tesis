@@ -38,9 +38,9 @@ async function bootstrap() {
     },
   );
 
-  await app.listen(environments.NODE_ENV === 'production' ? 3014 : 4014);
+  await app.listen(environments.NODE_ENV === 'production' ? 3004 : 4004);
   logger.log(
-    `🚀🎉 The Security microservice is running on: http://localhost:${environments.NODE_ENV === 'production' ? 3014 : 4014}✅`,
+    `🚀🎉 The Security microservice is running on: http://localhost:${environments.NODE_ENV === 'production' ? 3004 : 4004}✅`,
   );
 
   await kafkaApp.listen();

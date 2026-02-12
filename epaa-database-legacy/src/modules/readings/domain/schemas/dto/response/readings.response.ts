@@ -56,11 +56,11 @@ export interface PendingReadingResponse {
   trashRate: number;
   thirdPartyValue: number;
   total: number;
-  dueDate: Date;
+  dueDate: Date | null;
   incomeStatus: string;
   monthDue: string;
   yearDue: number;
   readingStatus: string;
   paymentDate: Date | null;
-  incomeDate: Date;
+  incomeDate: Date | null;
 }

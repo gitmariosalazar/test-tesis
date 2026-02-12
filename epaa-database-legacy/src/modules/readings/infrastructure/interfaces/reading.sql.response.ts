@@ -63,11 +63,11 @@ export interface PendingReadingSQLResult {
   trash_rate: number;
   third_party_value: number;
   total: number;
-  due_date: Date;
+  due_date: Date | null;
   income_status: string;
   month_due: string;
   year_due: number;
   reading_status: string;
   payment_date: Date | null;
-  income_date: Date;
+  income_date: Date | null;
 }

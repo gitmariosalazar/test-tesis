@@ -120,19 +120,28 @@ export class DatabaseServiceSQLServer2000 extends DatabaseAbstract {
     }
   }
 
-  public async query<T>(sql: string): Promise<T[]> {
-    if (!DatabaseServiceSQLServer2000.pool) {
-      throw new RpcException({
-        statusCode: statusCode.INTERNAL_SERVER_ERROR,
-        message: 'Database is not connected',
-      });
-    }
+public async query<T>(sql: string, params: any = []): Promise<T[]> {
+  if (!DatabaseServiceSQLServer2000.pool) {  // ← corrige el nombre de la clase si es necesario
+    throw new RpcException({
+      statusCode: statusCode.INTERNAL_SERVER_ERROR,
+      message: 'Database is not connected',
+    });
+  }
 
-    for (let attempt = 1; attempt <= this.maxQueryRetries; attempt++) {
-      const conn = await DatabaseServiceSQLServer2000.pool.connect();
-      try {
-        const result = await Promise.race([
-          conn.query<T>(sql, []),
+  for (let attempt = 1; attempt <= this.maxQueryRetries; attempt++) {
+    const conn = await DatabaseServiceSQLServer2000.pool.connect();
+    try {
+      // Función helper para ejecutar la query y normalizar resultado
+      const executeQuery = async (): Promise<T[]> => {
+        const queryResult = await conn.query<T>(sql, params);
+        return queryResult ?? [];  // nunca undefined/null
+      };
+
+      let result: T[];
+
+      if (Array.isArray(params) || typeof params === 'object' && params !== null) {
+        result = await Promise.race([
+          executeQuery(),
           new Promise<T[]>((_, reject) =>
             setTimeout(
               () => reject(new RpcException({
@@ -142,33 +151,57 @@ export class DatabaseServiceSQLServer2000 extends DatabaseAbstract {
             ),
           ),
         ]);
-        await conn.close();
-        return result as T[];
-      } catch (err: any) {
-        console.error('ODBC Error Details:', {
-          message: err.message,
-          sqlState: err.sqlState,
-          code: err.code,
-          sql,
-          stack: err.stack,
+      } else {
+        throw new RpcException({
+          statusCode: statusCode.BAD_REQUEST,
+          message: 'Invalid params type: must be array (positional ?) or object (named @var)',
         });
-        await conn.close();
-        if (attempt === this.maxQueryRetries) {
-          throw new RpcException({
-            statusCode: statusCode.INTERNAL_SERVER_ERROR,
-            message: `Failed to execute query: ${err.message}`,
-          });
-        }
-        await new Promise((r) =>
-          setTimeout(r, this.queryRetryDelayMs * Math.pow(2, attempt)),
-        );
       }
+
+      await conn.close();
+
+      // Chequeo extra de seguridad (opcional pero útil)
+      if (!Array.isArray(result)) {
+        throw new RpcException({
+          statusCode: statusCode.INTERNAL_SERVER_ERROR,
+          message: 'Query did not return an array',
+        });
+      }
+
+      return result;
+    } catch (err: any) {
+      console.error('ODBC Error Details (FULL):', {
+        message: err.message,
+        sqlState: err.sqlState,
+        code: err.code,
+        originalError: err.originalError,
+        odbcErrors: err.errors || err.odbcErrors || err.odbcError,
+        cause: err.cause,
+        info: err.info,
+        stack: err.stack,
+        sql: sql,
+      });
+
+      await conn.close();
+
+      if (attempt === this.maxQueryRetries) {
+        throw new RpcException({
+          statusCode: statusCode.INTERNAL_SERVER_ERROR,
+          message: `Failed to execute query after ${this.maxQueryRetries} attempts: ${err.message}`,
+        });
+      }
+
+      await new Promise((r) =>
+        setTimeout(r, this.queryRetryDelayMs * Math.pow(2, attempt)),
+      );
     }
-    throw new RpcException({
-      statusCode: statusCode.INTERNAL_SERVER_ERROR,
-      message: 'Query failed after maximum retries',
-    });
   }
+
+  throw new RpcException({
+    statusCode: statusCode.INTERNAL_SERVER_ERROR,
+    message: 'Query failed after maximum retries',
+  });
+}
 
   public async transaction<T>(
     operations: (conn: odbc.Connection) => Promise<T>,
