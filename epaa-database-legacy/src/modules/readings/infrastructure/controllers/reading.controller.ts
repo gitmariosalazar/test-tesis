@@ -116,4 +116,20 @@ export class ReadingController {
     );
     return this.readingService.findPendingReadingsByCardId(params.cardId);
   }
+
+  @Get('find-pending-reading-by-cadastral-key-or-card-id')
+  @MessagePattern('epaa-legacy.reading.find-pending-reading-by-cadastral-key-or-card-id')
+  findPendingReadingByCadastralKeyOrCardId(
+    @Payload()
+    params: {
+      searchValue: string;
+    },
+  ) {
+    console.log(
+      `Received findPendingReadingByCadastralKeyOrCardId request: ${JSON.stringify(params)}`,
+    );
+    return this.readingService.findPendingReadingsByCadastralKeyOrCardId(
+      params.searchValue,
+    );
+  }
 }

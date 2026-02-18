@@ -56,18 +56,19 @@ export interface PendingReadingSQLResult {
   rate: string;
   month: string;
   year: number;
-  consumption: number;
-  previous_reading: number;
   current_reading: number;
-  epaa_value: number;
-  trash_rate: number;
-  third_party_value: number;
-  total: number;
-  due_date: Date | null;
-  income_status: string;
+  previous_reading: number;
+  reading_value: number;
+  consumption: number;
   month_due: string;
   year_due: number;
   reading_status: string;
   payment_date: Date | null;
+  trash_rate: number;
+  epaa_value: number;
+  third_party_value: number;
+  total: number;
+  due_date: Date | null;
+  income_status: string;
   income_date: Date | null;
 }

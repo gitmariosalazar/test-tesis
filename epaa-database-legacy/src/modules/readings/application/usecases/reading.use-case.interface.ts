@@ -29,4 +29,8 @@ export interface InterfaceReadingUseCase {
   findPendingReadingsByCardId(
     cardId: string,
   ): Promise<PendingReadingResponse[]>;
+  findPendingReadingsByCadastralKeyOrCardId(
+    searchValue: string,
+  ): Promise<PendingReadingResponse[]>;
+  verifyReadingExists(searchValue: string): Promise<boolean>;
 }

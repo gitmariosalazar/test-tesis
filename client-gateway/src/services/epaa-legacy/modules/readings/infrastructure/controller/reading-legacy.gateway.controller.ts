@@ -61,6 +61,10 @@ export class ReadingLegacyGatewayController implements OnModuleInit {
       'epaa-legacy.reading.find-pending-reading-by-card-id',
     );
 
+      this.readingClient.subscribeToResponseOf(
+      'epaa-legacy.reading.find-pending-reading-by-cadastral-key-or-card-id',
+    );
+
     this.logger.log(
       'ReadingLegacyGatewayController initialized and connected to Kafka',
     );
@@ -278,6 +282,44 @@ export class ReadingLegacyGatewayController implements OnModuleInit {
     } catch (error) {
       this.logger.error(
         `Error in findPendingReadingByCardId: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(error);
+    }
+  }
+
+  @Get('find-pending-reading-by-cadastral-key-or-card-id/:searchValue')
+  @ApiOperation({
+    summary: 'Method GET - Find Pending Reading by Cadastral Key or Card ID (Legacy)',
+  })
+  async findPendingReadingByCadastralKeyOrCardId(
+    @Req() request: Request,
+    @Param('searchValue') searchValue: string,
+  ): Promise<ApiResponse> {
+    try {
+      this.logger.log(
+        `Sending findPendingReadingByCadastralKeyOrCardId request: ${JSON.stringify(searchValue)}`,
+      );
+
+      const params = {
+        searchValue: searchValue,
+      };
+
+      const response: PendingReadingResponse[] = await sendKafkaRequest(
+        this.readingClient.send(
+          'epaa-legacy.reading.find-pending-reading-by-cadastral-key-or-card-id',
+          params,
+        ),
+      );
+
+      return new ApiResponse(
+        `Pending reading by cadastral key or card id found successfully!`,
+        response,
+        request.url,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error in findPendingReadingByCadastralKeyOrCardId: ${error.message}`,
         error.stack,
       );
       throw new RpcException(error);

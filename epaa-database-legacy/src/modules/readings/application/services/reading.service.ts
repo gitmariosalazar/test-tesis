@@ -14,6 +14,7 @@ import { MONTHS } from '../../../../shared/consts/months';
 import { FindCurrentReadingParams } from '../../domain/schemas/dto/request/find-current-reading.paramss';
 import { UpdateReadingRequest } from '../../domain/schemas/dto/request/update.reading.request';
 import { ReadingNotFoundException } from '../../domain/exceptions/reading-not-found.exception';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class ReadingService implements InterfaceReadingUseCase {
@@ -215,6 +216,38 @@ export class ReadingService implements InterfaceReadingUseCase {
       const pendingReadings =
         await this.readingsRepository.findPendingReadingsByCardId(cardId);
       return pendingReadings;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async findPendingReadingsByCadastralKeyOrCardId(
+    searchValue: string,
+  ): Promise<PendingReadingResponse[]> {
+    try {
+      // First, verify if there are any readings for the given search value (cadastral key or card ID)
+      const verifyiFExists = await this.readingsRepository.verifyReadingExists(searchValue);
+      if (!verifyiFExists) {
+        throw new RpcException({
+          statusCode: statusCode.NOT_FOUND,
+          message: `No Exists any reading for the given search value: ${searchValue}`,
+        });
+      }
+
+      const pendingReadings =
+        await this.readingsRepository.findPendingReadingsByCadastralKeyOrCardId(
+          searchValue,
+        );
+      return pendingReadings;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async verifyReadingExists(searchValue: string): Promise<boolean> {
+    try {
+      const exists = await this.readingsRepository.verifyReadingExists(searchValue);
+      return exists;
     } catch (error) {
       throw error;
     }

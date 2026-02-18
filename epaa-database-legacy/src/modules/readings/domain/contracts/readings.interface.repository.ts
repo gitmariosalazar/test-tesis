@@ -31,4 +31,12 @@ export interface InterfaceReadingsRepository {
   findPendingReadingsByCardId(
     cardId: string,
   ): Promise<PendingReadingResponse[]>;
+
+  // Consultar Planillas Pendientes
+  findPendingReadingsByCadastralKeyOrCardId(
+    searchValue: string,
+  ): Promise<PendingReadingResponse[]>;
+
+  // VErify if the reading exists for a given cadastral key and date
+  verifyReadingExists(searchValue: string): Promise<boolean>;
 }

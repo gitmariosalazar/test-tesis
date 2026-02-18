@@ -49,18 +49,19 @@ export interface PendingReadingResponse {
   rate: string;
   month: string;
   year: number;
-  consumption: number;
-  previousReading: number;
   currentReading: number;
-  epaaValue: number;
-  trashRate: number;
-  thirdPartyValue: number;
-  total: number;
-  dueDate: Date | null;
-  incomeStatus: string;
+  previousReading: number;
+  readingValue: number;
+  consumption: number;
   monthDue: string;
   yearDue: number;
   readingStatus: string;
   paymentDate: Date | null;
+  trashRate: number;
+  epaaValue: number;
+  thirdPartyValue: number;
+  total: number;
+  dueDate: Date | null;
+  incomeStatus: string;
   incomeDate: Date | null;
 }

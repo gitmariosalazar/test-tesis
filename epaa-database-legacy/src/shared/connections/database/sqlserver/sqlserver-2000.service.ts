@@ -101,7 +101,9 @@ export class DatabaseServiceSQLServer2000 extends DatabaseAbstract {
         if (attempt === this.maxConnectionRetries)
           throw new RpcException({
             statusCode: statusCode.INTERNAL_SERVER_ERROR,
-            message: 'Could not connect to SQL Server 2000 after multiple attempts: ' + err.message,
+            message:
+              'Could not connect to SQL Server 2000 after multiple attempts: ' +
+              err.message,
           });
         await new Promise((r) =>
           setTimeout(r, this.connectionRetryDelayMs * Math.pow(2, attempt)),
@@ -120,86 +122,103 @@ export class DatabaseServiceSQLServer2000 extends DatabaseAbstract {
     }
   }
 
-public async query<T>(sql: string, params: any = []): Promise<T[]> {
-  if (!DatabaseServiceSQLServer2000.pool) {  // ← corrige el nombre de la clase si es necesario
+public async query<T>(sql: string, params: any[] = []): Promise<T[]> {
+  const pool = DatabaseServiceSQLServer2000.pool; 
+  if (!pool) {
     throw new RpcException({
       statusCode: statusCode.INTERNAL_SERVER_ERROR,
-      message: 'Database is not connected',
+      message: 'Database pool no inicializado',
     });
   }
 
+  // Validación de params
+  if (params.length > 0) {
+    const placeholderCount = (sql.match(/\?/g) || []).length;
+    if (placeholderCount !== params.length) {
+      throw new RpcException({
+        statusCode: statusCode.BAD_REQUEST,
+        message: `Mismatched placeholders: ${placeholderCount} vs ${params.length} params`,
+      });
+    }
+  }
+
+  let lastError: any = null;
+  let conn: odbc.Connection | null = null;
+
   for (let attempt = 1; attempt <= this.maxQueryRetries; attempt++) {
-    const conn = await DatabaseServiceSQLServer2000.pool.connect();
     try {
-      // Función helper para ejecutar la query y normalizar resultado
-      const executeQuery = async (): Promise<T[]> => {
-        const queryResult = await conn.query<T>(sql, params);
-        return queryResult ?? [];  // nunca undefined/null
-      };
+      conn = await pool.connect();
 
-      let result: T[];
+      // Limpieza preventiva fuerte
+      await conn.query(`
+        SET NOCOUNT ON;
+        SET ANSI_NULLS ON;
+        SET ANSI_WARNINGS ON;
+        IF OBJECT_ID('tempdb..#dummy') IS NOT NULL DROP TABLE #dummy;
+        SELECT 1 AS dummy INTO #dummy;
+        DROP TABLE #dummy;
+      `).catch(() => {}); // Ignorar fallos de limpieza
 
-      if (Array.isArray(params) || typeof params === 'object' && params !== null) {
-        result = await Promise.race([
-          executeQuery(),
-          new Promise<T[]>((_, reject) =>
-            setTimeout(
-              () => reject(new RpcException({
-                statusCode: statusCode.INTERNAL_SERVER_ERROR,
-                message: 'Query timeout',
-              })), this.queryTimeoutMs,
-            ),
-          ),
-        ]);
-      } else {
-        throw new RpcException({
-          statusCode: statusCode.BAD_REQUEST,
-          message: 'Invalid params type: must be array (positional ?) or object (named @var)',
-        });
-      }
+      // Ejecutar query con timeout más alto (ajusta según tu entorno: 30000–60000ms)
+      const effectiveTimeout = this.queryTimeoutMs * 3; // ej: 30s si original es 10s
+      const result = await Promise.race([
+        conn.query<T>(sql, params),
+        new Promise<T[]>((_, reject) => setTimeout(() => reject(new Error(`Query timeout después de ${effectiveTimeout}ms`)), effectiveTimeout)),
+      ]);
 
-      await conn.close();
+      // Limpieza final
+      await conn.query('SET NOCOUNT ON;').catch(() => {});
 
-      // Chequeo extra de seguridad (opcional pero útil)
-      if (!Array.isArray(result)) {
-        throw new RpcException({
-          statusCode: statusCode.INTERNAL_SERVER_ERROR,
-          message: 'Query did not return an array',
-        });
-      }
+      await conn.close().catch(() => {});
+      return Array.isArray(result) ? result : [];
 
-      return result;
     } catch (err: any) {
-      console.error('ODBC Error Details (FULL):', {
+      lastError = err;
+
+      // Logging detallado
+      console.error(`[Query Attempt ${attempt}/${this.maxQueryRetries}]`, {
         message: err.message,
         sqlState: err.sqlState,
         code: err.code,
-        originalError: err.originalError,
-        odbcErrors: err.errors || err.odbcErrors || err.odbcError,
-        cause: err.cause,
-        info: err.info,
-        stack: err.stack,
-        sql: sql,
+        odbcErrors: err.odbcErrors || err.errors,
+        stack: err.stack?.substring(0, 800),
+        sqlSnippet: sql.substring(0, 400) + (sql.length > 400 ? '...' : ''),
       });
 
-      await conn.close();
-
-      if (attempt === this.maxQueryRetries) {
-        throw new RpcException({
-          statusCode: statusCode.INTERNAL_SERVER_ERROR,
-          message: `Failed to execute query after ${this.maxQueryRetries} attempts: ${err.message}`,
-        });
+      if (conn) {
+        try {
+          // Limpieza desesperada si detectamos cursor inválido
+          if (err.sqlState === '24000' || err.message.includes('Invalid cursor state')) {
+            await conn.query('DEALLOCATE ALL CURSORS;').catch(() => {});
+          }
+          await conn.close().catch(() => {});
+        } catch (closeErr) {
+          console.warn('Error cerrando conexión sucia:', closeErr.message);
+        }
       }
 
-      await new Promise((r) =>
-        setTimeout(r, this.queryRetryDelayMs * Math.pow(2, attempt)),
-      );
+      // Si es cursor inválido → fuerza reconexión del pool
+      if (err.sqlState === '24000' || err.message.includes('Invalid cursor state')) {
+        console.warn('Invalid cursor state detectado → forzando reconexión del pool');
+        if (DatabaseServiceSQLServer2000.pool) {
+          await DatabaseServiceSQLServer2000.pool.close().catch(() => {});
+          DatabaseServiceSQLServer2000.pool = null;
+        }
+        await this.connect(); // reconecta el pool completo
+      }
+
+      if (attempt < this.maxQueryRetries) {
+        const delay = this.queryRetryDelayMs * Math.pow(2, attempt);
+        console.log(`Reintentando en ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
   }
 
   throw new RpcException({
     statusCode: statusCode.INTERNAL_SERVER_ERROR,
-    message: 'Query failed after maximum retries',
+    message: `Fallo después de ${this.maxQueryRetries} intentos. Último error: ${lastError?.message || 'Desconocido'}`,
+    cause: lastError,
   });
 }
 
