@@ -487,13 +487,13 @@ export class ReadingSQLServer2000Persistence implements InterfaceReadingsReposit
             di.Fecha_Pago                   AS payment_date,
             
             CASE WHEN l.LecturaActual IS NOT NULL THEN di.tasa_basura      ELSE NULL END AS trash_rate,
-            CASE WHEN l.LecturaActual IS NOT NULL THEN di.Valor_Titulo     ELSE NULL END AS epaa_value,
+            CASE WHEN l.LecturaActual IS NOT NULL THEN (di.Valor_Titulo + di.Recargo)    ELSE NULL END AS epaa_value,
             CASE WHEN l.LecturaActual IS NOT NULL THEN di.ValorTerceros    ELSE NULL END AS third_party_value,
             
             CASE WHEN l.LecturaActual IS NOT NULL 
                 THEN COALESCE(di.Valor_Titulo, 0) + 
                       COALESCE(di.ValorTerceros, 0) + 
-                      COALESCE(di.tasa_basura, 0) 
+                      COALESCE(di.tasa_basura, 0) + COALESCE(di.Recargo, 0)
                 ELSE NULL 
             END                             AS total,
 
@@ -610,13 +610,13 @@ async findPendingReadingsByCardId(
           di.Fecha_Pago                   AS payment_date,
           
           CASE WHEN l.LecturaActual IS NOT NULL THEN di.tasa_basura      ELSE NULL END AS trash_rate,
-          CASE WHEN l.LecturaActual IS NOT NULL THEN di.Valor_Titulo     ELSE NULL END AS epaa_value,
+          CASE WHEN l.LecturaActual IS NOT NULL THEN (di.Valor_Titulo + di.Recargo)     ELSE NULL END AS epaa_value,
           CASE WHEN l.LecturaActual IS NOT NULL THEN di.ValorTerceros    ELSE NULL END AS third_party_value,
           
           CASE WHEN l.LecturaActual IS NOT NULL 
               THEN COALESCE(di.Valor_Titulo, 0) + 
                     COALESCE(di.ValorTerceros, 0) + 
-                    COALESCE(di.tasa_basura, 0) 
+                    COALESCE(di.tasa_basura, 0) + COALESCE(di.Recargo, 0)
               ELSE NULL 
           END                             AS total,
 
@@ -735,13 +735,13 @@ async findPendingReadingsByCadastralKeyOrCardId(
           di.Fecha_Pago                   AS payment_date,
           
           CASE WHEN l.LecturaActual IS NOT NULL THEN di.tasa_basura      ELSE NULL END AS trash_rate,
-          CASE WHEN l.LecturaActual IS NOT NULL THEN di.Valor_Titulo     ELSE NULL END AS epaa_value,
+          CASE WHEN l.LecturaActual IS NOT NULL THEN (di.Valor_Titulo + di.Recargo)     ELSE NULL END AS epaa_value,
           CASE WHEN l.LecturaActual IS NOT NULL THEN di.ValorTerceros    ELSE NULL END AS third_party_value,
           
           CASE WHEN l.LecturaActual IS NOT NULL 
               THEN COALESCE(di.Valor_Titulo, 0) + 
                     COALESCE(di.ValorTerceros, 0) + 
-                    COALESCE(di.tasa_basura, 0) 
+                    COALESCE(di.tasa_basura, 0) + COALESCE(di.Recargo, 0)
               ELSE NULL 
           END                             AS total,
 
