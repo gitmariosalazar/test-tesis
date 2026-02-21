@@ -15,12 +15,15 @@ import { FindCurrentReadingParams } from '../../domain/schemas/dto/request/find-
 import { UpdateReadingRequest } from '../../domain/schemas/dto/request/update.reading.request';
 import { ReadingNotFoundException } from '../../domain/exceptions/reading-not-found.exception';
 import { RpcException } from '@nestjs/microservices';
+import { InterfaceExternalPayrollRepository } from '../../domain/contracts/external-payroll.interface.repository';
 
 @Injectable()
 export class ReadingService implements InterfaceReadingUseCase {
   constructor(
     @Inject('ReadingsRepository')
     private readonly readingsRepository: InterfaceReadingsRepository,
+    @Inject('ExternalPayrollRepository')
+    private readonly externalPayrollRepository: InterfaceExternalPayrollRepository,
   ) {}
 
   createReading(request: CreateReadingLegacyRequest): Promise<ReadingResponse> {
@@ -203,7 +206,7 @@ export class ReadingService implements InterfaceReadingUseCase {
         await this.readingsRepository.findPendingReadingsByCadastralKey(
           cadastralKey,
         );
-      return pendingReadings;
+      return this.enrichPendingReadingsWithExternalData(pendingReadings);
     } catch (error) {
       throw error;
     }
@@ -215,7 +218,7 @@ export class ReadingService implements InterfaceReadingUseCase {
     try {
       const pendingReadings =
         await this.readingsRepository.findPendingReadingsByCardId(cardId);
-      return pendingReadings;
+      return this.enrichPendingReadingsWithExternalData(pendingReadings);
     } catch (error) {
       throw error;
     }
@@ -226,7 +229,8 @@ export class ReadingService implements InterfaceReadingUseCase {
   ): Promise<PendingReadingResponse[]> {
     try {
       // First, verify if there are any readings for the given search value (cadastral key or card ID)
-      const verifyiFExists = await this.readingsRepository.verifyReadingExists(searchValue);
+      const verifyiFExists =
+        await this.readingsRepository.verifyReadingExists(searchValue);
       if (!verifyiFExists) {
         throw new RpcException({
           statusCode: statusCode.NOT_FOUND,
@@ -238,15 +242,61 @@ export class ReadingService implements InterfaceReadingUseCase {
         await this.readingsRepository.findPendingReadingsByCadastralKeyOrCardId(
           searchValue,
         );
-      return pendingReadings;
+      return this.enrichPendingReadingsWithExternalData(pendingReadings);
     } catch (error) {
       throw error;
     }
   }
 
+  private async enrichPendingReadingsWithExternalData(
+    pendingReadings: PendingReadingResponse[],
+  ): Promise<PendingReadingResponse[]> {
+    if (!pendingReadings || pendingReadings.length === 0) {
+      return pendingReadings;
+    }
+
+    try {
+      const cardId = pendingReadings[0].cardId;
+      if (!cardId) {
+        return pendingReadings;
+      }
+
+      const externalPayrolls =
+        await this.externalPayrollRepository.getPayrollsByIdentification(
+          cardId,
+        );
+
+      if (!externalPayrolls || externalPayrolls.length === 0) {
+        return pendingReadings;
+      }
+
+      return pendingReadings.map((reading) => {
+        const match = externalPayrolls.find(
+          (ep) =>
+            String(ep.Mes).trim().toUpperCase() ===
+              reading.month.trim().toUpperCase() &&
+            Number(ep.Anio) === reading.year &&
+            Number(ep.Consumo) === reading.consumption &&
+            Number(ep.LecturaActual) === reading.currentReading,
+        );
+
+        if (match) {
+          reading.thirdPartyValue = match.valor_terceros;
+          reading.total =
+            reading.epaaValue + reading.trashRate + reading.thirdPartyValue;
+        }
+
+        return reading;
+      });
+    } catch (error) {
+      return pendingReadings;
+    }
+  }
+
   async verifyReadingExists(searchValue: string): Promise<boolean> {
     try {
-      const exists = await this.readingsRepository.verifyReadingExists(searchValue);
+      const exists =
+        await this.readingsRepository.verifyReadingExists(searchValue);
       return exists;
     } catch (error) {
       throw error;
